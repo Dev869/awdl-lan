@@ -77,8 +77,8 @@
 <h2>Setup</h2>
 <ol>
   <li>Build on this Mac (call it <strong>Mac&nbsp;A</strong>): <code>cd helper &amp;&amp; swift build -c release</code></li>
-  <li>Copy <code>helper/.build/release/mcdirect-helper</code> to <strong>Mac&nbsp;B</strong> by AirDrop or USB stick, since the network is about to go away.</li>
-  <li>On Mac B: <code>chmod +x mcdirect-helper</code></li>
+  <li>AirDrop <strong>both</strong> <code>helper/.build/release/mcdirect-helper</code> and <code>helper/twomac.sh</code> into one folder on <strong>Mac&nbsp;B</strong>, before the network goes away.</li>
+  <li>On Mac B: <code>chmod +x mcdirect-helper twomac.sh</code></li>
   <li><strong>Turn Wi-Fi OFF on both Macs.</strong> Leave <strong>Bluetooth ON</strong>, since macOS uses it to bootstrap AWDL.</li>
 </ol>
 <p class="note">
@@ -92,38 +92,25 @@
   <div class="card">
     <h3>Mac A</h3>
     <p class="role">Stands in for the Minecraft server. Start this first.</p>
-<pre id="a1">pkill -f 'nc -l 19999'
-nc -l 19999 &gt; /tmp/got.bin &amp;
-sleep 300 | ./mcdirect-helper \
-  host --port 19999 \
-  --name "TestWorld" --code 1234</pre>
+<pre id="a1">./twomac.sh host</pre>
     <button class="copy" data-for="a1">Copy</button>
     <p class="role">
-      The <code>pkill</code> matters: a leftover listener from an earlier attempt keeps port
-      19999 and swallows the transfer, so you get a passing tunnel and an empty file.
-      Check the result afterwards with <code>ls -l /tmp/got.bin</code>.
+      It clears any listener left over from an earlier attempt, starts one on port 19999,
+      and advertises over AWDL. Wait for <strong>advertising TestWorld</strong>, then leave
+      it running: it reports bytes as they land.
     </p>
-    <p class="role">Wait for <code>{"event":"ready"...}</code> before moving to Mac B.</p>
   </div>
 
   <div class="card">
     <h3>Mac B</h3>
-    <p class="role">Discovers Mac A and opens the tunnel.</p>
-<pre id="b1">sleep 300 | ./mcdirect-helper browse --auto | tee /tmp/browse.log</pre>
+    <p class="role">Discovers Mac A, opens the tunnel, pushes 50 MB, times it.</p>
+<pre id="b1">./twomac.sh join</pre>
     <button class="copy" data-for="b1">Copy</button>
     <p class="role">
-      Watch for <code>"event":"found"</code> then <code>"event":"connected"</code>.
-      Then in a <strong>second terminal</strong>. This picks the
-      <code>localPort</code> out of the log for you, nothing to substitute:
+      One terminal, no port to copy across. It waits up to 60 seconds for discovery,
+      then prints throughput and a verdict. For a fast smoke test first:
+      <code>MB=5 ./twomac.sh join</code>.
     </p>
-<pre id="b2">PORT=$(grep -o '"localPort":[0-9]*' /tmp/browse.log 2&gt;/dev/null | head -1 | cut -d: -f2)
-if [ -z "$PORT" ]; then
-  echo "no tunnel yet: /tmp/browse.log has no localPort."
-  echo "Run this on Mac B, in a second terminal, after 'connected' appears."
-else
-  time head -c 50000000 /dev/urandom | nc 127.0.0.1 "$PORT"
-fi</pre>
-    <button class="copy" data-for="b2">Copy</button>
   </div>
 
 </div>
@@ -131,8 +118,8 @@ fi</pre>
 <h2>Reading the result</h2>
 <p>
   <span class="ok">Success</span> is 50,000,000 bytes arriving on Mac A while both machines
-  have Wi-Fi off. That alone proves AWDL carried it. The <code>time</code> output is the number
-  that matters:
+  have Wi-Fi off. That alone proves AWDL carried it. Mac B prints the verdict itself, so
+  the table below is just what it is deciding between:
 </p>
 <table>
   <tr><th>Elapsed</th><th>Throughput</th><th>Verdict</th></tr>
@@ -142,6 +129,9 @@ fi</pre>
 </table>
 
 <h2>If it doesn't work</h2>
+<p>
+  Either script prints the likely cause and dumps the helper log on failure, so start there.
+</p>
 <p>
   <strong>Nothing found on Mac B.</strong> Check System&nbsp;Settings → Privacy&nbsp;&amp;&nbsp;Security →
   Local&nbsp;Network and make sure Terminal is allowed. This grant cannot be reset with
@@ -158,7 +148,7 @@ fi</pre>
 </p>
 
 <h2>Report back</h2>
-<p>Three things: did it transfer with Wi-Fi off, the <code>time</code> figure, and any <code>error</code> events.</p>
+<p>Three things: did it transfer with Wi-Fi off, the MB/s line from Mac B, and the byte count from Mac A.</p>
 
 </main>
 <script>

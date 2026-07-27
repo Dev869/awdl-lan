@@ -20,27 +20,28 @@ Bluetooth on, since macOS uses it to bootstrap AWDL.
 
 Mac A, standing in for a Minecraft server, timing a 50 MB transfer:
 
-```sh
-pkill -f 'nc -l 19999'   # a leftover listener keeps the port and eats the transfer
-nc -l 19999 > /tmp/got.bin &
-sleep 60 | ./mcdirect-helper host --port 19999 --name "TestWorld" --code 1234
-```
-
-Mac B:
+AirDrop both `mcdirect-helper` and `twomac.sh` into the same folder on Mac B,
+then run one command per machine. Mac A first:
 
 ```sh
-sleep 60 | ./mcdirect-helper browse --auto | tee /tmp/browse.log
+./twomac.sh host
 ```
 
-Then, once `connected` appears, in another shell on Mac B:
+Mac B, once Mac A says it is advertising:
 
 ```sh
-PORT=$(grep -o '"localPort":[0-9]*' /tmp/browse.log | head -1 | cut -d: -f2)
-time head -c 50000000 /dev/urandom | nc 127.0.0.1 "$PORT"
+./twomac.sh join
 ```
 
-An empty `$PORT` gives `nc: port range not valid`, which means no tunnel is open
-yet — read `/tmp/browse.log` rather than the nc error.
+Mac B times the transfer and prints the throughput verdict; Mac A prints the
+byte count that proves the payload arrived. `MB=5 ./twomac.sh join` pushes 5 MB
+instead of 50 for a quick smoke test.
+
+The script handles what used to be manual and easy to get wrong: clearing a
+stale listener that would otherwise hold port 19999 and swallow the transfer,
+carrying the tunnel port across without copying it by hand, warning when Wi-Fi
+is still on, and naming a Local Network denial instead of showing an empty
+server list.
 
 Success is bytes arriving on Mac A with Wi-Fi off on both machines. The elapsed
 time is the throughput number that decides whether initial chunk sync is
