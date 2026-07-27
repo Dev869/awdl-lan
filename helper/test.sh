@@ -36,10 +36,10 @@ nc -l $MC_PORT > "$WORK/received.bin" &
 sleep 1
 
 # 3. Host helper fronts it. `sleep` holds stdin open — closing stdin is our kill switch.
-sleep 60 | $HELPER host --port $MC_PORT --name "$WORLD" --code 1234 > "$WORK/host.log" 2>&1 &
+sleep 600 | $HELPER host --port $MC_PORT --name "$WORLD" --code 1234 > "$WORK/host.log" 2>&1 &
 
 # 4. Browse helper finds this run's world specifically and dials it.
-sleep 60 | $HELPER browse --auto --match "$WORLD" > "$WORK/browse.log" 2>&1 &
+sleep 600 | $HELPER browse --auto --match "$WORLD" > "$WORK/browse.log" 2>&1 &
 
 # 5. Wait for the tunnel mouth to open.
 LOCAL_PORT=""
@@ -60,18 +60,40 @@ fi
 
 echo "tunnel open on 127.0.0.1:$LOCAL_PORT"
 
-# 6. Push the payload through and let it drain.
-nc 127.0.0.1 "$LOCAL_PORT" < "$WORK/payload.bin"
-sleep 2
+# 6. Push the payload through and let it drain. `-w` because nc does not exit when
+# its stdin runs out — waiting on it here used to stall until the helpers' own stdin
+# closed, which made the test pass on a timeout rather than on the transfer.
+nc -w 3 127.0.0.1 "$LOCAL_PORT" < "$WORK/payload.bin" &
+sleep 6
 
 # 7. Did every byte survive the round trip?
-if cmp -s "$WORK/payload.bin" "$WORK/received.bin"; then
-    echo "PASS: $(wc -c < "$WORK/received.bin" | tr -d ' ') bytes relayed intact"
-    exit 0
+if ! cmp -s "$WORK/payload.bin" "$WORK/received.bin"; then
+    echo "FAIL: payload mismatch"
+    echo "  sent:     $(wc -c < "$WORK/payload.bin" | tr -d ' ') bytes"
+    echo "  received: $(wc -c < "$WORK/received.bin" 2>/dev/null | tr -d ' ') bytes"
+    echo "--- browse.log ---"; cat "$WORK/browse.log"
+    exit 1
 fi
 
-echo "FAIL: payload mismatch"
-echo "  sent:     $(wc -c < "$WORK/payload.bin" | tr -d ' ') bytes"
-echo "  received: $(wc -c < "$WORK/received.bin" 2>/dev/null | tr -d ' ') bytes"
-echo "--- browse.log ---"; cat "$WORK/browse.log"
-exit 1
+# 8. Same tunnel, second connection. A player who disconnects and rejoins gets no
+# new discovery event, so the mouth has to survive the first join or the entry in
+# the list points at a closed port for the rest of the session.
+# `nc -l` holds the port until its connection closes, and the relay only half-closes,
+# so the first fake server has to be retired by hand before a second can bind.
+pkill -f "nc -l $MC_PORT" 2>/dev/null || true
+sleep 1
+# `-w` on both ends, because nc's exit on stdin EOF is not something to bet on.
+nc -l -w 6 $MC_PORT > "$WORK/received2.bin" &
+sleep 1
+nc -w 3 127.0.0.1 "$LOCAL_PORT" < "$WORK/payload.bin" &
+sleep 8
+
+if ! cmp -s "$WORK/payload.bin" "$WORK/received2.bin"; then
+    echo "FAIL: tunnel did not survive the first connection"
+    echo "  received on reconnect: $(wc -c < "$WORK/received2.bin" 2>/dev/null | tr -d ' ') bytes"
+    echo "--- browse.log ---"; cat "$WORK/browse.log"
+    exit 1
+fi
+
+echo "PASS: $(wc -c < "$WORK/received.bin" | tr -d ' ') bytes relayed intact, tunnel reusable"
+exit 0

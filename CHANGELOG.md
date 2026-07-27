@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.1
+
+Fixes joining while connected to a Wi-Fi network.
+
+- A world advertised on both Wi-Fi and the peer-to-peer radio was treated as two
+  different worlds. It could be dialled over the Wi-Fi side even when only the
+  peer-to-peer side could reach it, and it flickered in and out of the list.
+- Joining is no longer one-shot. The connection to a nearby world was torn down
+  after the first attempt, so leaving a world and coming back, or retrying after
+  a failed join, hit a dead port until the world was rediscovered.
+- A world that stops responding mid-join now drops the connection instead of
+  leaving Minecraft waiting on it.
+
 ## 1.0.0
 
 First release.

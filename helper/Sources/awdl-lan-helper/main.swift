@@ -32,11 +32,14 @@ var liveListeners: [NWListener] = []
 var liveBrowsers: [NWBrowser] = []
 var liveConnections: [NWConnection] = []
 
-func watch(_ connection: NWConnection, _ label: String) {
+func watch(_ connection: NWConnection, _ label: String, onFailure: (() -> Void)? = nil) {
     liveConnections.append(connection)
     connection.stateUpdateHandler = { state in
         trace("\(label): \(state)")
-        if case .failed(let e) = state { trace("\(label) failed: \(e)") }
+        if case .failed(let e) = state {
+            trace("\(label) failed: \(e)")
+            onFailure?()
+        }
     }
 }
 
@@ -150,8 +153,12 @@ func bonjourSafe(_ name: String) -> String {
 
 // MARK: - Browse
 
-var peers: [String: NWEndpoint] = [:]
-var pendingListeners: [String: NWListener] = [:]
+/// A world can be advertised on more than one interface at once — joined to a Wi-Fi
+/// network, the same host shows up over both en0 and awdl0 as two browse results that
+/// differ only in the interface they were seen on. Track them as a set per world so a
+/// second sighting is not a second world, and one sighting going away is not a loss.
+var peers: [String: Set<NWEndpoint>] = [:]
+var tunnels: [String: NWListener] = [:]
 
 func runBrowse(autoConnect: Bool, match: String?) {
     let browser = NWBrowser(for: .bonjourWithTXTRecord(type: serviceType, domain: nil), using: p2pParameters())
@@ -161,7 +168,9 @@ func runBrowse(autoConnect: Bool, match: String?) {
             switch change {
             case .added(let result):
                 guard case .service(let name, _, _, _) = result.endpoint else { continue }
-                peers[name] = result.endpoint
+                let firstSighting = peers[name, default: []].isEmpty
+                peers[name, default: []].insert(result.endpoint)
+                guard firstSighting else { continue }
                 var found: [String: Any] = ["event": "found", "id": name, "name": name]
                 if case .bonjour(let txt) = result.metadata {
                     if let code = txt["code"] { found["code"] = code }
@@ -175,7 +184,11 @@ func runBrowse(autoConnect: Bool, match: String?) {
                 }
             case .removed(let result):
                 guard case .service(let name, _, _, _) = result.endpoint else { continue }
+                peers[name]?.remove(result.endpoint)
+                // Still reachable on another interface: not a loss.
+                guard peers[name]?.isEmpty ?? true else { continue }
                 peers[name] = nil
+                tunnels.removeValue(forKey: name)?.cancel()
                 emit(["event": "lost", "id": name])
             default:
                 break
@@ -196,12 +209,21 @@ func runBrowse(autoConnect: Bool, match: String?) {
 }
 
 func connect(id: String) {
-    guard let endpoint = peers[id] else {
+    guard peers[id] != nil else {
         emit(["event": "error", "code": "unknown_peer", "message": id])
         return
     }
+    if let open = tunnels[id], let p = open.port {
+        emit(["event": "connected", "id": id, "localPort": Int(p.rawValue)])
+        return
+    }
 
-    let peer = NWConnection(to: endpoint, using: p2pParameters())
+    // Dial the world by name rather than by the endpoint we happened to see it on.
+    // A browse result carries the interface it arrived over, and connecting to that
+    // endpoint pins the dial to that one interface — so a world sighted over Wi-Fi
+    // gets dialled over Wi-Fi even when only the AWDL path can actually reach it.
+    // Resolving the name lets the stack try every path and keep whichever answers.
+    let endpoint = NWEndpoint.service(name: id, type: serviceType, domain: "local", interface: nil)
 
     // Loopback only — nothing outside this machine should reach the tunnel mouth.
     let localParams = NWParameters.tcp
@@ -211,17 +233,21 @@ func connect(id: String) {
         emit(["event": "error", "code": "listener_failed", "message": "loopback bind failed"])
         return
     }
-    pendingListeners[id] = listener
+    tunnels[id] = listener
 
+    // One peer connection per local client, and the mouth stays open. A join that
+    // fails or a player who leaves and comes back gets a fresh dial on the same port
+    // instead of a listener that was cancelled after the first attempt.
     listener.newConnectionHandler = { client in
         trace("connect: local client attached, dialling peer")
+        let peer = NWConnection(to: endpoint, using: p2pParameters())
         watch(client, "tunnel.client")
-        watch(peer, "tunnel.peer")
+        // A peer that never comes up has to take the client down with it, or Minecraft
+        // waits out its own timeout on a socket that will never speak.
+        watch(peer, "tunnel.peer") { client.cancel() }
         client.start(queue: q)
         peer.start(queue: q)
         relay(client, peer)
-        listener.cancel()               // one client per dial
-        pendingListeners[id] = nil
     }
 
     listener.stateUpdateHandler = { state in
@@ -230,7 +256,9 @@ func connect(id: String) {
             if let p = listener.port {
                 emit(["event": "connected", "id": id, "localPort": Int(p.rawValue)])
             }
-        case .failed(let e): emitError(e)
+        case .failed(let e):
+            tunnels[id] = nil
+            emitError(e)
         default: break
         }
     }
