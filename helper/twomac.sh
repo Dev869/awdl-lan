@@ -19,7 +19,7 @@ GOT=/tmp/mcdirect-got.bin
 LOG=$(mktemp -t mcdirect)
 DISCOVERY_TIMEOUT=60
 
-trap 'kill $(jobs -p) 2>/dev/null' EXIT INT TERM
+trap 'kill $(jobs -p) 2>/dev/null; rm -f "$LOG"' EXIT INT TERM
 
 HELPER=""
 for candidate in ./mcdirect-helper .build/release/mcdirect-helper; do
@@ -33,8 +33,13 @@ if [ -z "$HELPER" ]; then
 fi
 
 # Wi-Fi left on is the one mistake that makes a passing test meaningless, since
-# the bytes may cross a router instead of the peer-to-peer radio.
-if [ "$(networksetup -getairportpower en0 2>/dev/null | awk '{print $NF}')" = "On" ]; then
+# the bytes may cross a router instead of the peer-to-peer radio. The Wi-Fi
+# device is not always en0, so ask rather than assume: a hardcoded guess turns
+# this warning into silence on the machines that need it.
+WIFI_DEV=$(networksetup -listallhardwareports 2>/dev/null |
+    awk '/Hardware Port: Wi-Fi/ { getline; print $2; exit }')
+if [ -n "${WIFI_DEV:-}" ] &&
+   [ "$(networksetup -getairportpower "$WIFI_DEV" 2>/dev/null | awk '{print $NF}')" = "On" ]; then
     echo "WARNING: Wi-Fi is on. If both Macs can reach the same network this"
     echo "         test proves nothing about AWDL. Turn Wi-Fi off on both."
     echo
@@ -71,10 +76,22 @@ run_host() {
     # A listener left over from an earlier attempt keeps the port and silently
     # eats the transfer, which looks exactly like a working tunnel moving zero
     # bytes. Clear it before binding.
-    pkill -f "nc -l $PORT" 2>/dev/null && sleep 0.3
+    # -x so this matches only a bare `nc -l 19999`. Without it, -f matches any
+    # command line merely containing that string, including a shell or editor.
+    pkill -x -f "nc -l $PORT" 2>/dev/null && sleep 0.3
     : > "$GOT"
     nc -l $PORT > "$GOT" &
-    sleep 0.3
+    local listener=$!
+    sleep 0.5
+
+    # nc exits immediately if it cannot bind. Without this the helper would
+    # advertise happily, the tunnel would open, and the bytes would vanish into
+    # whatever else owns the port.
+    if ! kill -0 "$listener" 2>/dev/null; then
+        echo "Could not listen on port $PORT: something else already has it."
+        echo "Find it with:  lsof -nP -iTCP:$PORT"
+        exit 1
+    fi
 
     # `sleep` holds the helper's stdin open. Closing stdin is the kill switch,
     # so the helper can never outlive this script.
