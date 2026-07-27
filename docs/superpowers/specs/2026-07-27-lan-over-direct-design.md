@@ -99,13 +99,43 @@ would let a Windows helper drop in later without the Java side changing.
 
 ## Room code
 
-The host displays a four-digit code, carried in the Bonjour TXT record. Clients
-show only matching worlds.
+The host generates a four-digit code, carried in the Bonjour TXT record.
 
-This costs about ten lines and earns them twice over. Without it, any Mac in
-radio range can walk into an open world, and several people in one café see
-each other's games. Vanilla LAN shares this weakness, but AWDL widens it —
-there is no shared-network step gating access.
+**Revised during Phase 1.** The original plan was to filter the client's list to
+matching codes only. That would require a text-entry screen before a player can
+see anything, which is worse friction than the problem it solves. The code is
+now displayed in the list entry rather than enforced, so it disambiguates two
+worlds sharing a name in one room without gating the join. Vanilla Open to LAN
+gates nothing either, so this is parity rather than a regression, and the
+security posture below is unchanged.
+
+## UI approach
+
+**Revised during Phase 1, and it removed most of the planned work.**
+
+Inspecting the unobfuscated 26.2 jar showed `ServerSelectionList` populates its
+LAN section from `updateNetworkServers(List<LanServer>)`, and that `LanServer` is
+nothing but `(motd, address)`. Discovered peers can therefore be appended as
+ordinary LAN entries pointing at `127.0.0.1:<tunnelPort>`, and vanilla renders,
+pings, and joins them unaided.
+
+The mod ships no custom UI, no custom list entry, and no click handling. One
+`@ModifyVariable` on that method is the entire integration.
+
+Peers are dialled eagerly on discovery rather than on click, since an entry's
+address must be real before it can be selected. This also hides AWDL's slow
+first association behind the time a player spends reading the list.
+
+Hosting needs no mixin at all: polling the integrated server's published state
+each client tick covers both `publishServer` overloads and `unpublishServer` in
+one place.
+
+Discovery is scoped to the multiplayer screen via `init`/`removed`, because
+browsing holds the AWDL radio active and would otherwise cost battery for the
+whole session.
+
+Dropped: showing the room code in chat. `ChatComponent` is no longer reachable
+from `Gui` or `Minecraft` in 26.2, and the list entry already carries the code.
 
 ## Failure handling
 

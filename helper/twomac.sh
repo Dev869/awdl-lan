@@ -96,7 +96,8 @@ run_host() {
     while :; do
         received=$(wc -c < "$GOT" | tr -d ' ')
         if [ "$received" -gt "$last" ]; then
-            printf '\r  receiving... %s MB   ' "$((received / 1000000))"
+            # Only redraw in place on a terminal, so a redirected log stays readable.
+            [ -t 1 ] && printf '\r  receiving... %s MB   ' "$((received / 1000000))"
             last=$received
             idle=0
         elif [ "$received" -gt 0 ]; then
@@ -107,7 +108,8 @@ run_host() {
         sleep 0.5
     done
 
-    printf '\r  received %s bytes (%s MB).            \n' "$received" "$((received / 1000000))"
+    [ -t 1 ] && printf '\r'
+    printf '  received %s bytes (%s MB).            \n' "$received" "$((received / 1000000))"
     echo
     echo "That crossed AWDL if both Macs had Wi-Fi off. Mac B printed the speed."
 }

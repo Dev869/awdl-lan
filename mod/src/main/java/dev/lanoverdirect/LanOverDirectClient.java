@@ -89,8 +89,8 @@ public final class LanOverDirectClient implements ClientModInitializer {
             host = HelperProcess.start(helperPath,
                     List.of("host", "--port", String.valueOf(port), "--name", worldName, "--code", code),
                     new Events());
-            // ponytail: the code needs to reach the player on screen, not just the log.
-            // Gui's chat API changed shape in 26.2; wire it once verified.
+            // Joiners see this code in the server list entry. ChatComponent is no longer
+            // reachable from Gui or Minecraft in 26.2, so the host reads it from the log.
             LOG.info("Sharing '{}' over peer-to-peer Wi-Fi. Room code: {}", worldName, code);
         } catch (Exception e) {
             LOG.warn("Could not start hosting: {}", e.toString());
@@ -146,7 +146,13 @@ public final class LanOverDirectClient implements ClientModInitializer {
         for (Map.Entry<String, Integer> tunnel : TUNNELS.entrySet()) {
             HelperProcess.Peer peer = PEERS.get(tunnel.getKey());
             if (peer != null) {
-                entries.add(new LanServer(peer.name() + " (nearby)", "127.0.0.1:" + tunnel.getValue()));
+                // The code disambiguates two worlds with the same name in one room.
+                // It is shown, not enforced: gating the join would mean a text-entry
+                // screen, and vanilla Open to LAN gates nothing either.
+                String label = peer.code().isEmpty()
+                        ? peer.name() + " (nearby)"
+                        : peer.name() + " (nearby · " + peer.code() + ")";
+                entries.add(new LanServer(label, "127.0.0.1:" + tunnel.getValue()));
             }
         }
         return entries;
