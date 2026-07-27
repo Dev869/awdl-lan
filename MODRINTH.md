@@ -10,7 +10,7 @@ Everything below is paste-ready. Run `./package.sh` first; upload only
 | Name | AWDL LAN |
 | Slug | `awdl-lan` |
 | Summary | Play together over Apple peer-to-peer Wi-Fi. No router, no network, no setup. macOS only. |
-| Categories | Multiplayer, Utility |
+| Categories | Utility, Social (feature both; "Multiplayer" is not a Modrinth category) |
 | Environment | **Client-side only** (tick "Works in singleplayer too") |
 | License | MIT |
 
