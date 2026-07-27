@@ -2,6 +2,7 @@
   "lan-over-direct.button.nearby": "Nearby",
   "lan-over-direct.nearby.title": "Nearby Worlds",
   "lan-over-direct.nearby.searching": "Looking for nearby Macs…",
+  "lan-over-direct.chat.hosting": "Sharing over nearby Wi-Fi · room code %s",
   "lan-over-direct.nearby.sharing": "Sharing \"%s\" · room code %s",
   "lan-over-direct.nearby.entry": "%s · code %s",
   "lan-over-direct.nearby.connecting": "%s — connecting…",

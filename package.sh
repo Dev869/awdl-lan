@@ -50,6 +50,56 @@ chmod +x "$work/native/mcdirect-helper"
 codesign -v "$work/native/mcdirect-helper" 2>/dev/null || { echo "FAIL: embedded helper signature invalid"; exit 1; }
 "$work/native/mcdirect-helper" >/dev/null 2>&1 && { echo "FAIL: helper should exit 2 with no args"; exit 1; }
 
+step "Checking jar references resolve"
+# Mixin targets, entrypoints, and lang keys are resolved by name at load time, so a
+# typo or a moved class survives compilation and fails only when a player opens the
+# screen. Check them against the packaged jar.
+JARDIR="$work" python3 - <<'PY'
+import json, os, pathlib, re, sys
+
+root = pathlib.Path(os.environ["JARDIR"])
+fm = json.loads((root / "fabric.mod.json").read_text())
+problems = []
+
+for entry in fm.get("mixins", []):
+    cfg = entry["config"] if isinstance(entry, dict) else entry
+    path = root / cfg
+    if not path.exists():
+        problems.append(f"mixin config missing: {cfg}")
+        continue
+    mx = json.loads(path.read_text())
+    pkg = mx["package"].replace(".", "/")
+    for name in mx.get("mixins", []) + mx.get("client", []) + mx.get("server", []):
+        if not (root / pkg / (name.replace(".", "/") + ".class")).exists():
+            problems.append(f"mixin class missing: {mx['package']}.{name}")
+
+for kind, classes in fm.get("entrypoints", {}).items():
+    for cls in classes:
+        target = cls["value"] if isinstance(cls, dict) else cls
+        if not (root / (target.replace(".", "/") + ".class")).exists():
+            problems.append(f"entrypoint class missing ({kind}): {target}")
+
+if "icon" in fm and not (root / fm["icon"]).exists():
+    problems.append(f"icon missing: {fm['icon']}")
+
+lang_path = root / "assets/lan-over-direct/lang/en_us.json"
+if not lang_path.exists():
+    problems.append("en_us.json missing")
+else:
+    lang = json.loads(lang_path.read_text())
+    used = set()
+    for java in pathlib.Path("mod/src/main/java").rglob("*.java"):
+        used |= set(re.findall(r'translatable\(\s*"([^"]+)"', java.read_text()))
+    for key in sorted(k for k in used if k.startswith("lan-over-direct")):
+        if key not in lang:
+            problems.append(f"translation key used but not defined: {key}")
+
+if problems:
+    print("\n".join("FAIL: " + p for p in problems))
+    sys.exit(1)
+print("mixin targets, entrypoints, icon and translation keys all resolve")
+PY
+
 mkdir -p dist
 cp "$JAR" dist/
 SIZE=$(du -h "dist/lan-over-direct-$VERSION.jar" | cut -f1)

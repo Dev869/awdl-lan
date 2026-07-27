@@ -21,6 +21,13 @@ trap 'kill $(jobs -p) 2>/dev/null; rm -rf "$WORK"' EXIT
 head -c 300000 /dev/urandom > "$WORK/payload.bin"
 
 # 2. Fake Minecraft server: accept one connection, dump it to a file.
+# Clear leftovers first. A stale listener from a previous run keeps the port and
+# silently swallows the transfer, which reads as a payload mismatch rather than as
+# the process collision it actually is.
+pkill -f "nc -l $MC_PORT" 2>/dev/null || true
+pkill -f "$HELPER" 2>/dev/null || true
+sleep 0.5
+
 nc -l $MC_PORT > "$WORK/received.bin" &
 sleep 1
 

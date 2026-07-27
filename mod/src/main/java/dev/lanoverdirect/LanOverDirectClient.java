@@ -6,6 +6,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.server.IntegratedServer;
 import net.minecraft.client.server.LanServer;
+import net.minecraft.network.chat.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -102,11 +103,16 @@ public final class LanOverDirectClient implements ClientModInitializer {
             host = HelperProcess.start(helperPath,
                     List.of("host", "--port", String.valueOf(port), "--name", worldName, "--code", code),
                     new Events());
-            // Joiners see this code in the server list entry. ChatComponent is no longer
-            // reachable from Gui or Minecraft in 26.2, so the host reads it from the log.
+            // Joiners see this code in the server list entry; the host sees it in chat,
+            // next to vanilla's own "Local game hosted on port" line.
             hostingWorld = worldName;
             hostingCode = code;
             LOG.info("Sharing '{}' over peer-to-peer Wi-Fi. Room code: {}", worldName, code);
+            var player = Minecraft.getInstance().player;
+            if (player != null) {
+                player.sendSystemMessage(
+                        Component.translatable("lan-over-direct.chat.hosting", code));
+            }
         } catch (Exception e) {
             LOG.warn("Could not start hosting: {}", e.toString());
         }
