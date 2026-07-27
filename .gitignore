@@ -6,3 +6,4 @@ out/
 build/
 run/
 .DS_Store
+dist/
