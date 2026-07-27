@@ -2,7 +2,17 @@
 
 ## 1.0.1
 
-Fixes joining while connected to a Wi-Fi network.
+Fixes joining.
+
+- Joining a nearby world closed the connection it had just opened. Picking an
+  entry replaces the multiplayer screen, which is also the signal the mod used to
+  release the radio, and the tunnel lives in the process that release shuts down.
+  Discovery now stays up while you are connected.
+- A world whose name had a leading or trailing space could never be joined; the
+  name was silently trimmed before being handed back to the helper, which then
+  had no such world.
+
+And joining while connected to a Wi-Fi network.
 
 - A world advertised on both Wi-Fi and the peer-to-peer radio was treated as two
   different worlds. It could be dialled over the Wi-Fi side even when only the

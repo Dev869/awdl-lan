@@ -33,13 +33,14 @@ pkill -f "$HELPER" 2>/dev/null || true
 sleep 0.5
 
 nc -l $MC_PORT > "$WORK/received.bin" &
+FAKE_SERVER=$!
 sleep 1
 
 # 3. Host helper fronts it. `sleep` holds stdin open — closing stdin is our kill switch.
-sleep 600 | $HELPER host --port $MC_PORT --name "$WORLD" --code 1234 > "$WORK/host.log" 2>&1 &
+sleep 120 | $HELPER host --port $MC_PORT --name "$WORLD" --code 1234 > "$WORK/host.log" 2>&1 &
 
 # 4. Browse helper finds this run's world specifically and dials it.
-sleep 600 | $HELPER browse --auto --match "$WORLD" > "$WORK/browse.log" 2>&1 &
+sleep 120 | $HELPER browse --auto --match "$WORLD" > "$WORK/browse.log" 2>&1 &
 
 # 5. Wait for the tunnel mouth to open.
 LOCAL_PORT=""
@@ -79,8 +80,9 @@ fi
 # new discovery event, so the mouth has to survive the first join or the entry in
 # the list points at a closed port for the rest of the session.
 # `nc -l` holds the port until its connection closes, and the relay only half-closes,
-# so the first fake server has to be retired by hand before a second can bind.
-pkill -f "nc -l $MC_PORT" 2>/dev/null || true
+# so the first fake server has to be retired before a second can bind. By pid, not by
+# pattern: a pattern kill here would also take out a developer's unrelated nc.
+kill $FAKE_SERVER 2>/dev/null || true
 sleep 1
 # `-w` on both ends, because nc's exit on stdin EOF is not something to bet on.
 nc -l -w 6 $MC_PORT > "$WORK/received2.bin" &

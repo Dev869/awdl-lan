@@ -74,9 +74,29 @@ public final class AwdlLanClient implements ClientModInitializer {
 
     // MARK: - Hosting
 
+    /**
+     * Ticks discovery stays up after the last screen lets go.
+     *
+     * <p>Joining a nearby world <em>is</em> the last screen letting go: picking an
+     * entry pushes {@code ConnectScreen}, which fires the multiplayer screen's
+     * {@code removed()} before Minecraft has a connection to notice. The tunnel lives
+     * inside the browse helper, so stopping on that tick would close the socket the
+     * join is in the middle of opening.
+     */
+    private static final int RELEASE_GRACE_TICKS = 100;
+
+    private static int idleTicks;
+
     private static void tick(Minecraft client) {
         checkHostState(client);
-        if (browseHolders == 0 && browser != null) {
+
+        // A live connection keeps discovery up unconditionally: it may be running
+        // through one of our tunnels, and closing the helper would drop the player.
+        if (browseHolders > 0 || client.getConnection() != null) {
+            idleTicks = 0;
+            return;
+        }
+        if (browser != null && ++idleTicks > RELEASE_GRACE_TICKS) {
             stopBrowsing();
         }
     }
@@ -145,6 +165,7 @@ public final class AwdlLanClient implements ClientModInitializer {
      */
     public static synchronized void acquireBrowse() {
         browseHolders++;
+        idleTicks = 0;
         if (helperPath == null || (browser != null && browser.isAlive())) {
             return;
         }
@@ -212,7 +233,13 @@ public final class AwdlLanClient implements ClientModInitializer {
      * off its row either.
      */
     private static String fromPeer(String text) {
-        return text.replace('§', '?').substring(0, Math.min(text.length(), 48));
+        String clean = text.replace('§', '?');
+        // Cap on code points, not chars: cutting at 48 chars can land between the
+        // halves of a surrogate pair and leave a lone surrogate on screen.
+        if (clean.codePointCount(0, clean.length()) <= 48) {
+            return clean;
+        }
+        return clean.substring(0, clean.offsetByCodePoints(0, 48));
     }
 
     /**

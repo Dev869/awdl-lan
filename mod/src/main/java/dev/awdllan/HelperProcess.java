@@ -202,7 +202,8 @@ public final class HelperProcess implements AutoCloseable {
             }
 
             StringBuilder value = new StringBuilder();
-            if (line.charAt(i) == '"') {
+            boolean quoted = line.charAt(i) == '"';
+            if (quoted) {
                 i = readQuoted(line, i, value);
                 if (i < 0) {
                     break;
@@ -213,7 +214,11 @@ public final class HelperProcess implements AutoCloseable {
                     i++;
                 }
             }
-            fields.put(key.toString(), value.toString().trim());
+            // Only bare values need trimming, to strip the whitespace around a number.
+            // Trimming a quoted one corrupts it: a world named " Home " is a different
+            // Bonjour name from "Home", so the connect command would name a peer the
+            // helper has never seen and the entry would never finish dialling.
+            fields.put(key.toString(), quoted ? value.toString() : value.toString().trim());
         }
         return fields;
     }
@@ -235,9 +240,17 @@ public final class HelperProcess implements AutoCloseable {
                     case 'b' -> out.append('\b');
                     case 'f' -> out.append('\f');
                     case 'u' -> {
+                        // A bad escape must not throw: this runs on the event reader
+                        // thread, and NumberFormatException there kills the thread
+                        // without tripping the helper_died report, so the UI would
+                        // just stop updating with nothing said.
                         if (i + 4 < s.length()) {
-                            out.append((char) Integer.parseInt(s.substring(i + 1, i + 5), 16));
-                            i += 4;
+                            try {
+                                out.append((char) Integer.parseInt(s.substring(i + 1, i + 5), 16));
+                                i += 4;
+                            } catch (NumberFormatException malformed) {
+                                out.append("\\u");
+                            }
                         }
                     }
                     default -> out.append(escaped);   // \" \\ \/

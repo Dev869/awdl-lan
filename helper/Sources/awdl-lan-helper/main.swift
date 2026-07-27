@@ -319,6 +319,7 @@ func connect(id: String) {
             }
         case .failed(let e):
             tunnels[id] = nil
+            listener.cancel()   // dropping the reference alone leaves it live
             emitError(e)
         default: break
         }
