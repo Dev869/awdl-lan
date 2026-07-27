@@ -24,6 +24,8 @@ Everything below is paste-ready. Run `./package.sh` first; upload only
 | Game versions | 26.1, 26.1.2, 26.2 |
 | Dependencies | Fabric API — required |
 
+The version changelog field is in [CHANGELOG.md](CHANGELOG.md).
+
 ## Description (paste as-is)
 
 Two Macs. No router, no Wi-Fi network, no internet, no IP addresses. Open your
