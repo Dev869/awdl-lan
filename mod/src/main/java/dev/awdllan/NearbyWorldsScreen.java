@@ -28,6 +28,9 @@ public class NearbyWorldsScreen extends Screen {
     private List<AwdlLanClient.NearbyWorld> shown = List.of();
     private int ticks;
 
+    /** Whether this screen currently holds discovery open. One hold per screen. */
+    private boolean holding;
+
     public NearbyWorldsScreen(Screen parent) {
         super(Component.translatable("awdl-lan.nearby.title"));
         this.parent = parent;
@@ -35,7 +38,13 @@ public class NearbyWorldsScreen extends Screen {
 
     @Override
     protected void init() {
-        AwdlLanClient.acquireBrowse();
+        // Guarded, because tick() calls rebuildWidgets() whenever the list changes and
+        // that calls init() again. Acquiring per init would leak a hold every refresh,
+        // and the count would never return to zero.
+        if (!holding) {
+            holding = true;
+            AwdlLanClient.acquireBrowse();
+        }
         shown = AwdlLanClient.nearbyWorlds();
 
         int left = this.width / 2 - BUTTON_WIDTH / 2;
@@ -118,7 +127,10 @@ public class NearbyWorldsScreen extends Screen {
 
     @Override
     public void removed() {
-        AwdlLanClient.releaseBrowse();
+        if (holding) {
+            holding = false;
+            AwdlLanClient.releaseBrowse();
+        }
     }
 
     @Override

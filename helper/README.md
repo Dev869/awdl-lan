@@ -58,6 +58,10 @@ Network. That grant cannot be reset with `tccutil`, so a denial is sticky.
 
 Commands in: `{"cmd":"connect","id":"..."}`, `{"cmd":"quit"}`
 Events out: `ready`, `found{id,name,code}`, `lost{id}`, `connected{id,localPort}`,
-`error{code,message}`
+`inuse{id}`, `idle{id}`, `error{code,message}`
+
+`inuse` and `idle` bracket a tunnel actually carrying a session. The mod needs them
+because joining closes the screen that keeps discovery alive, and Minecraft has no
+connection to check until login finishes.
 
 Closing stdin terminates the helper, so it can never outlive Minecraft.

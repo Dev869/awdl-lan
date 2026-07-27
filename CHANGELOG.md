@@ -7,7 +7,12 @@ Fixes joining.
 - Joining a nearby world closed the connection it had just opened. Picking an
   entry replaces the multiplayer screen, which is also the signal the mod used to
   release the radio, and the tunnel lives in the process that release shuts down.
-  Discovery now stays up while you are connected.
+  It only worked at all because the Nearby screen leaked a hold every time the
+  list refreshed, which kept the radio alive by accident — and never on the
+  vanilla LAN list, which does not refresh that way. The helper now says when a
+  tunnel is carrying a session, and discovery stays up until it is not.
+- Discovery ran for the rest of the session once the Nearby screen had been
+  opened, holding the radio warm. That was the same leaked hold.
 - A world whose name had a leading or trailing space could never be joined; the
   name was silently trimmed before being handed back to the helper, which then
   had no such world.

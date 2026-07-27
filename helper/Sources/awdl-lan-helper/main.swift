@@ -55,6 +55,9 @@ func emitError(_ error: NWError) {
 
 // MARK: - Relay
 
+/// How long a half-closed pair may linger before both sides are cancelled.
+let halfCloseTimeout: TimeInterval = 30
+
 /// Pump bytes both ways, closing each direction independently.
 ///
 /// A half-close must NOT tear down the pair: the peer connection may still be
@@ -84,6 +87,18 @@ func relay(_ a: NWConnection, _ b: NWConnection) {
                 to.send(content: nil, isComplete: true, completion: .contentProcessed { _ in })
                 closedDirections += 1
                 if closedDirections == 2 {
+                    a.cancel()
+                    b.cancel()
+                    return
+                }
+                // Reap a pair that stays half-closed. A peer can go away without its
+                // FIN ever arriving, and then neither side is ever cancelled: the
+                // sockets linger and the tunnel is still reported as carrying a
+                // session. A Minecraft client that has stopped sending is one that
+                // has disconnected, so there is nothing here worth waiting on.
+                q.asyncAfter(deadline: .now() + halfCloseTimeout) {
+                    guard closedDirections < 2 else { return }
+                    trace("relay \(label): other direction never closed, reaping")
                     a.cancel()
                     b.cancel()
                 }
@@ -156,6 +171,10 @@ func bonjourSafe(_ name: String) -> String {
 /// second sighting is not a second world, and one sighting going away is not a loss.
 var peers: [String: Set<NWEndpoint>] = [:]
 var tunnels: [String: NWListener] = [:]
+
+/// Local clients currently attached per tunnel. Drives the `inuse`/`idle` events the
+/// mod uses to know a session is running through a tunnel.
+var tunnelClients: [String: Int] = [:]
 
 func runBrowse(autoConnect: Bool, match: String?) {
     let browser = NWBrowser(for: .bonjourWithTXTRecord(type: serviceType, domain: nil), using: p2pParameters())
@@ -306,7 +325,31 @@ func connect(id: String) {
     // instead of a listener that was cancelled after the first attempt.
     listener.newConnectionHandler = { client in
         trace("connect: local client attached, dialling peer")
-        watch(client, "tunnel.client")
+
+        // Tell the mod this tunnel is carrying a session. It cannot work this out for
+        // itself: joining is what closes the screen that keeps discovery alive, and
+        // Minecraft has no connection to notice until login finishes, which over this
+        // radio is long after the socket it would be judged by already exists.
+        tunnelClients[id, default: 0] += 1
+        if tunnelClients[id] == 1 {
+            emit(["event": "inuse", "id": id])
+        }
+
+        liveConnections.append(client)
+        client.stateUpdateHandler = { state in
+            trace("tunnel.client: \(state)")
+            switch state {
+            case .cancelled, .failed:
+                let left = (tunnelClients[id] ?? 1) - 1
+                tunnelClients[id] = left > 0 ? left : nil
+                if left <= 0 {
+                    emit(["event": "idle", "id": id])
+                }
+            default:
+                break
+            }
+        }
+
         client.start(queue: q)
         dial(id: id, for: client, candidates: dialCandidates(id))
     }

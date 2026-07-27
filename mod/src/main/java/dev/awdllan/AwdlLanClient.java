@@ -35,6 +35,9 @@ public final class AwdlLanClient implements ClientModInitializer {
     private static final Map<String, HelperProcess.Peer> PEERS = new ConcurrentHashMap<>();
     private static final Map<String, Integer> TUNNELS = new ConcurrentHashMap<>();
 
+    /** Tunnels with a session running through them. Non-empty means do not stop discovery. */
+    private static final java.util.Set<String> BUSY_TUNNELS = ConcurrentHashMap.newKeySet();
+
     private static volatile Path helperPath;
     private static volatile HelperProcess browser;
     private static volatile HelperProcess host;
@@ -90,9 +93,11 @@ public final class AwdlLanClient implements ClientModInitializer {
     private static void tick(Minecraft client) {
         checkHostState(client);
 
-        // A live connection keeps discovery up unconditionally: it may be running
-        // through one of our tunnels, and closing the helper would drop the player.
-        if (browseHolders > 0 || client.getConnection() != null) {
+        // A tunnel carrying a session keeps discovery up: the tunnel lives inside the
+        // browse helper, so stopping discovery would drop the player. Minecraft's own
+        // connection is no use as the test here — it stays null until login finishes,
+        // which over this radio is well after the socket exists.
+        if (browseHolders > 0 || !BUSY_TUNNELS.isEmpty()) {
             idleTicks = 0;
             return;
         }
@@ -191,6 +196,7 @@ public final class AwdlLanClient implements ClientModInitializer {
         }
         PEERS.clear();
         TUNNELS.clear();
+        BUSY_TUNNELS.clear();
     }
 
     /**
@@ -296,6 +302,7 @@ public final class AwdlLanClient implements ClientModInitializer {
         public void onPeerLost(String id) {
             HelperProcess.Peer gone = PEERS.remove(id);
             TUNNELS.remove(id);
+            BUSY_TUNNELS.remove(id);
             if (gone != null) {
                 LOG.info("Lost nearby world '{}'.", gone.name());
             }
@@ -305,6 +312,16 @@ public final class AwdlLanClient implements ClientModInitializer {
         public void onTunnelReady(String id, int localPort) {
             TUNNELS.put(id, localPort);
             LOG.info("Tunnel to '{}' open on 127.0.0.1:{}.", id, localPort);
+        }
+
+        @Override
+        public void onTunnelInUse(String id, boolean inUse) {
+            if (inUse) {
+                BUSY_TUNNELS.add(id);
+            } else {
+                BUSY_TUNNELS.remove(id);
+            }
+            LOG.debug("Tunnel to '{}' {}.", id, inUse ? "in use" : "idle");
         }
 
         @Override

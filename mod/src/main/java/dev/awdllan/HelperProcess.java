@@ -35,6 +35,13 @@ public final class HelperProcess implements AutoCloseable {
 
         default void onTunnelReady(String id, int localPort) {}
 
+        /**
+         * A tunnel gained or lost its local client, meaning a session is or is not
+         * running through it. Discovery must not be shut down while any tunnel is in
+         * use, because shutting it down takes the tunnel with it.
+         */
+        default void onTunnelInUse(String id, boolean inUse) {}
+
         /** Helper stderr. The only evidence available when this misbehaves on someone else's machine. */
         default void onTrace(String line) {}
 
@@ -156,6 +163,12 @@ public final class HelperProcess implements AutoCloseable {
                     listener.onTunnelReady(fields.get("id"), Integer.parseInt(fields.get("localPort")));
                 } catch (NumberFormatException | NullPointerException e) {
                     listener.onError("bad_event", line);
+                }
+            }
+            case "inuse", "idle" -> {
+                String id = fields.get("id");
+                if (id != null) {
+                    listener.onTunnelInUse(id, event.equals("inuse"));
                 }
             }
             case "error" -> listener.onError(

@@ -8,6 +8,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -24,9 +25,22 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
         super(title);
     }
 
+    /**
+     * One hold per screen, not per {@code init()}.
+     *
+     * <p>{@code rebuildWidgets()} calls {@code init()} again on the same screen, so
+     * acquiring here unguarded takes a hold that nothing ever releases: the count
+     * never returns to zero and discovery runs for the rest of the session.
+     */
+    @Unique
+    private boolean awdlLan$holding;
+
     @Inject(method = "init", at = @At("TAIL"))
     private void awdlLan$addNearbyButton(CallbackInfo ci) {
-        AwdlLanClient.acquireBrowse();
+        if (!awdlLan$holding) {
+            awdlLan$holding = true;
+            AwdlLanClient.acquireBrowse();
+        }
         if (!dev.awdllan.HelperBinary.isSupportedPlatform()) {
             return;
         }
@@ -40,6 +54,9 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 
     @Inject(method = "removed", at = @At("HEAD"))
     private void awdlLan$stopBrowsing(CallbackInfo ci) {
-        AwdlLanClient.releaseBrowse();
+        if (awdlLan$holding) {
+            awdlLan$holding = false;
+            AwdlLanClient.releaseBrowse();
+        }
     }
 }
