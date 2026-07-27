@@ -41,12 +41,10 @@ the jar round-trip, extracts executable, runs, and keeps a valid ad-hoc signatur
 The dev client reaches the main menu with both mixins configured and no injection
 errors, and the helper leaves no orphan process on exit.
 
-## Not yet verified
+End to end on two Macs with Wi-Fi disabled on both: a world shared with Open to
+LAN appeared in the other machine's list and was joined and played. That exercises
+the whole chain, including the `ServerSelectionList` and `JoinMultiplayerScreen`
+injections, which only class-load when the Multiplayer screen opens.
 
-`ServerSelectionList` and `JoinMultiplayerScreen` only class-load when the
-Multiplayer screen opens, so reaching the main menu does not prove those injections
-apply. Open Multiplayer once in the dev client: with `defaultRequire: 1` a bad
-target fails loudly rather than silently doing nothing.
-
-AWDL transport is proven on two Macs with Wi-Fi disabled on both: 50 MB in about
-6 seconds (~8 MB/s), well clear of the point where chunk sync would be felt.
+Raw AWDL throughput measured separately at 50 MB in about 6 seconds (~8 MB/s),
+well clear of the point where chunk sync would be felt.

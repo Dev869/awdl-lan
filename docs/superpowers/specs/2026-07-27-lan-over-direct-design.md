@@ -1,7 +1,7 @@
 # lan-over-direct — Design
 
 Date: 2026-07-27
-Status: Approved, Phase 0 pending
+Status: Implemented and verified end to end on two Macs (v0.1.0)
 
 ## Summary
 
@@ -196,7 +196,11 @@ Two bugs found and fixed, both worth recording:
    `preparing`, discarding all queued data. Each direction must close
    independently, propagating the FIN via `send(content: nil, isComplete: true)`.
 
-**Phase 0 gate cleared (two Macs, Wi-Fi off both).** The 50 MB transfer completed
+**Phase 0 and Phase 2 both cleared (two Macs, Wi-Fi off both).** The mod was run
+in game: a world shared with Open to LAN appeared on the second machine and was
+joined and played, which exercises every layer including the two screen mixins.
+
+On raw throughput: The 50 MB transfer completed
 in roughly 6 seconds, about 8 MB/s. That is above the 5 MB/s mark set for "joining
 feels instant", so Minecraft's initial chunk sync is a non-issue and AWDL's
 realtime-mode elevation is evidently reached under this traffic pattern.
