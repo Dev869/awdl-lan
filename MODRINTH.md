@@ -11,7 +11,7 @@ Everything below is paste-ready. Run `./package.sh` first; upload only
 | Slug | `awdl-lan` |
 | Summary | Play together over Apple peer-to-peer Wi-Fi. No router, no network, no setup. macOS only. |
 | Categories | Multiplayer, Utility |
-| Environment | Client **required**, server **unsupported** |
+| Environment | **Client-side only** (tick "Works in singleplayer too") |
 | License | MIT |
 
 ## Version settings

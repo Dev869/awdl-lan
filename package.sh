@@ -114,7 +114,7 @@ Upload that one file to Modrinth. Settings to select:
   Version number     $VERSION
   Loaders            Fabric
   Game versions      $MC_RANGE  (tick 26.1, 26.1.2, 26.2)
-  Environment        Client required, server unsupported
+  Environment        Client-side only (+ works in singleplayer)
   Dependencies       Fabric API — required
 
 Field-by-field text for the project page is in MODRINTH.md.
