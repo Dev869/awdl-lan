@@ -107,15 +107,16 @@ sleep 300 | ./mcdirect-helper \
   <div class="card">
     <h3>Mac B</h3>
     <p class="role">Discovers Mac A and opens the tunnel.</p>
-<pre id="b1">sleep 300 | ./mcdirect-helper browse --auto</pre>
+<pre id="b1">sleep 300 | ./mcdirect-helper browse --auto | tee /tmp/browse.log</pre>
     <button class="copy" data-for="b1">Copy</button>
     <p class="role">
       Watch for <code>"event":"found"</code> then <code>"event":"connected"</code>.
-      Note the <code>localPort</code> number. Then in a <strong>second terminal</strong>,
-      substituting that port:
+      Then in a <strong>second terminal</strong>. This picks the
+      <code>localPort</code> out of the log for you, nothing to substitute:
     </p>
-<pre id="b2">time head -c 50000000 /dev/urandom \
-  | nc 127.0.0.1 PORT</pre>
+<pre id="b2">PORT=$(grep -o '"localPort":[0-9]*' /tmp/browse.log | head -1 | cut -d: -f2)
+time head -c 50000000 /dev/urandom \
+  | nc 127.0.0.1 "$PORT"</pre>
     <button class="copy" data-for="b2">Copy</button>
   </div>
 

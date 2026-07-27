@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.17.17'
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
 }
 
 version = project.mod_version
@@ -14,11 +14,10 @@ repositories {
 }
 
 dependencies {
+    // No `mappings` line: Minecraft 26.x ships unobfuscated, so Loom needs none.
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    // Yarn has no 26.2 build, so use Mojang's own mappings.
-    mappings loom.officialMojangMappings()
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 }
 
 processResources {
@@ -33,24 +32,31 @@ processResources {
     }
 }
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
-    }
-    withSourcesJar()
-}
-
 tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8'
-    options.release = 25
+    it.options.encoding = 'UTF-8'
+    it.options.release = 25
 }
 
-// The self-check is a plain main() with asserts, not JUnit. Run it via `gradle selfCheck`
-// or directly through mod/test.sh, which needs no Gradle at all.
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+// The self-check is a plain main() with asserts, not JUnit. `mod/test.sh` runs the
+// same thing without Gradle or a Minecraft classpath.
 tasks.register('selfCheck', JavaExec) {
     group = 'verification'
     description = 'Runs the HelperProcess self-check against a fake and the real helper.'
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'dev.lanoverdirect.HelperProcessSelfCheck'
     jvmArgs = ['-ea']
+}
+
+tasks.named('test') {
+    failOnNoDiscoveredTests = false   // no JUnit here; selfCheck is the real check
+}
+
+tasks.named('check') {
+    dependsOn 'selfCheck'
 }
