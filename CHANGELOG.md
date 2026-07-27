@@ -2,32 +2,30 @@
 
 ## 1.0.2
 
-Fixes joining.
+Fixes joining. If 1.0.0 showed you a nearby world that would not let you in, this
+is the release that fixes it.
 
-- Joining a nearby world closed the connection it had just opened. Picking an
-  entry replaces the multiplayer screen, which is also the signal the mod used to
-  release the radio, and the tunnel lives in the process that release shuts down.
-  It only worked at all because the Nearby screen leaked a hold every time the
-  list refreshed, which kept the radio alive by accident — and never on the
-  vanilla LAN list, which does not refresh that way. The helper now says when a
-  tunnel is carrying a session, and discovery stays up until it is not.
-- Discovery ran for the rest of the session once the Nearby screen had been
-  opened, holding the radio warm. That was the same leaked hold.
-- A world whose name had a leading or trailing space could never be joined; the
-  name was silently trimmed before being handed back to the helper, which then
-  had no such world.
+**Joining works from the Multiplayer list.** Picking a nearby world from the
+vanilla LAN section closed the connection at the moment it opened, so the join
+failed every time. Joining from the Nearby screen usually worked, which is why
+this looked intermittent rather than broken.
 
-And joining while connected to a Wi-Fi network.
+**Joining works on a Wi-Fi network.** A world seen over both Wi-Fi and the
+peer-to-peer radio was treated as two worlds, and the mod could try to reach it
+over the side that had no route to it. Worlds also flickered in and out of the
+list. Both are fixed, so you no longer have to leave your network to play.
 
-- A world advertised on both Wi-Fi and the peer-to-peer radio was treated as two
-  different worlds. It could be dialled over the Wi-Fi side even when only the
-  peer-to-peer side could reach it, and it flickered in and out of the list.
-- Joining is no longer one-shot. The connection to a nearby world was torn down
-  after the first attempt, so leaving a world and coming back, or retrying after
-  a failed join, hit a dead port until the world was rediscovered.
-- A world that stops responding mid-join now gets one retry on the path it was
-  last seen on, then drops the connection instead of leaving Minecraft waiting
-  on it.
+**Retrying works.** Leaving a world and coming back, or trying again after a
+failed join, used to hit a dead end until the world was rediscovered.
+
+**A join that cannot succeed now fails instead of hanging.** It tries the other
+routes to the world first, then gives up rather than leaving you on a loading
+screen.
+
+Also: a world whose name started or ended with a space could never be joined.
+Nearby machines can no longer use colour codes in a world name to make it look
+like something the mod said. Discovery no longer keeps the radio warm for the
+rest of your session after you have opened the Nearby screen once.
 
 ## 1.0.0
 
