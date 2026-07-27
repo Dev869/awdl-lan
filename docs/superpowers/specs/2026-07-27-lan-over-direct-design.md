@@ -213,7 +213,7 @@ rather than after the mod is written.
 the same JSON protocol. Most of the mod is therefore testable with no Minecraft
 and no network.
 
-**Phase 2 — integration.** Two Macs, Wi-Fi off, join a world.
+**Phase 2 — integration.** Two Macs on no shared network, join a world.
 
 ## Out of scope for v1
 

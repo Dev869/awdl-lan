@@ -5,7 +5,7 @@
 # discovers it with a browse helper, and pushes a payload through the tunnel.
 # If the bytes come out the far end intact, the whole relay path works.
 #
-# Proves everything except AWDL itself — that needs two Macs with Wi-Fi off.
+# Proves everything except AWDL itself: that needs two Macs sharing no network.
 
 set -u
 cd "$(dirname "$0")"

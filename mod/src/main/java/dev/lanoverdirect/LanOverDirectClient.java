@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,9 +38,14 @@ public final class LanOverDirectClient implements ClientModInitializer {
     private static volatile HelperProcess browser;
     private static volatile HelperProcess host;
     private static volatile String lastError;
+    private static volatile String hostingWorld;
+    private static volatile String hostingCode;
 
     /** Port the integrated server was last seen published on, or -1. */
     private static int publishedPort = -1;
+
+    /** Screens currently wanting discovery. Zero means the radio can be released. */
+    private static int browseHolders;
 
     @Override
     public void onInitializeClient() {
@@ -62,10 +68,17 @@ public final class LanOverDirectClient implements ClientModInitializer {
 
         // Watching the integrated server's published state covers both publishServer
         // overloads and unpublishServer in one place, with no mixin.
-        ClientTickEvents.END_CLIENT_TICK.register(LanOverDirectClient::checkHostState);
+        ClientTickEvents.END_CLIENT_TICK.register(LanOverDirectClient::tick);
     }
 
     // MARK: - Hosting
+
+    private static void tick(Minecraft client) {
+        checkHostState(client);
+        if (browseHolders == 0 && browser != null) {
+            stopBrowsing();
+        }
+    }
 
     private static void checkHostState(Minecraft client) {
         IntegratedServer server = client.getSingleplayerServer();
@@ -91,6 +104,8 @@ public final class LanOverDirectClient implements ClientModInitializer {
                     new Events());
             // Joiners see this code in the server list entry. ChatComponent is no longer
             // reachable from Gui or Minecraft in 26.2, so the host reads it from the log.
+            hostingWorld = worldName;
+            hostingCode = code;
             LOG.info("Sharing '{}' over peer-to-peer Wi-Fi. Room code: {}", worldName, code);
         } catch (Exception e) {
             LOG.warn("Could not start hosting: {}", e.toString());
@@ -102,14 +117,28 @@ public final class LanOverDirectClient implements ClientModInitializer {
             host.close();
             host = null;
         }
+        hostingWorld = null;
+        hostingCode = null;
     }
 
     // MARK: - Discovery
     //
-    // Scoped to the multiplayer screen by JoinMultiplayerScreenMixin. Browsing keeps
-    // the AWDL radio warm, so it must not run for the whole session.
+    // Scoped to the screens that need it. Browsing keeps the AWDL radio warm, so it
+    // must not run for the whole session.
 
-    public static synchronized void startBrowsing() {
+    /**
+     * Screens that want discovery running call this on open and {@link #releaseBrowse()}
+     * on close.
+     *
+     * <p>It is a count rather than a start/stop pair because moving between the
+     * multiplayer screen and the nearby screen fires the old screen's {@code removed}
+     * before the new screen's {@code init}. A plain stop/start there would restart the
+     * helper and blank the list on every navigation. The count only reaches zero when
+     * the player has genuinely left, and it is checked on tick, by which point any
+     * handoff has already re-acquired.
+     */
+    public static synchronized void acquireBrowse() {
+        browseHolders++;
         if (helperPath == null || (browser != null && browser.isAlive())) {
             return;
         }
@@ -124,7 +153,11 @@ public final class LanOverDirectClient implements ClientModInitializer {
         }
     }
 
-    public static synchronized void stopBrowsing() {
+    public static synchronized void releaseBrowse() {
+        browseHolders = Math.max(0, browseHolders - 1);
+    }
+
+    private static synchronized void stopBrowsing() {
         if (browser != null) {
             browser.close();
             browser = null;
@@ -161,6 +194,37 @@ public final class LanOverDirectClient implements ClientModInitializer {
     /** Last error code, or null. {@code local_network_denied} is the one players must be told about. */
     public static String lastError() {
         return lastError;
+    }
+
+    /**
+     * A peer as the UI sees it. {@code port} is -1 while the tunnel is still being
+     * dialled, which is the state the vanilla LAN list cannot express.
+     */
+    public record NearbyWorld(String id, String name, String code, int port) {
+        public boolean ready() {
+            return port > 0;
+        }
+    }
+
+    /** Every peer in range, dialled or not, sorted for a stable list. */
+    public static List<NearbyWorld> nearbyWorlds() {
+        List<NearbyWorld> worlds = new ArrayList<>();
+        for (HelperProcess.Peer peer : PEERS.values()) {
+            Integer port = TUNNELS.get(peer.id());
+            worlds.add(new NearbyWorld(peer.id(), peer.name(), peer.code(), port == null ? -1 : port));
+        }
+        worlds.sort(Comparator.comparing(NearbyWorld::name).thenComparing(NearbyWorld::id));
+        return worlds;
+    }
+
+    /** Name of the world being shared, or null. */
+    public static String hostingWorld() {
+        return hostingWorld;
+    }
+
+    /** Room code being advertised, or null. */
+    public static String hostingCode() {
+        return hostingCode;
     }
 
     // MARK: - Helper events

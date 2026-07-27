@@ -4,9 +4,13 @@
 #   Mac A (stands in for the Minecraft server):  ./twomac.sh host
 #   Mac B (joins over AWDL and pushes a file):   ./twomac.sh join
 #
-# Turn Wi-Fi off on both Macs first, and leave Bluetooth on: macOS uses it to
-# bootstrap AWDL. Success is the byte count Mac A reports while neither machine
-# has a network, which nothing but AWDL can explain.
+# Wi-Fi must be ON on both Macs but joined to NO network, with Bluetooth on.
+# AWDL is a virtual interface riding the Wi-Fi radio, so switching Wi-Fi off
+# takes AWDL down with it, which is also why AirDrop needs Wi-Fi on. What the
+# test needs is the absence of a shared LAN, not a powered-down radio.
+#
+# Success is the byte count Mac A reports with neither Mac on a network, which
+# nothing but the peer-to-peer radio can explain.
 #
 # MB=5 ./twomac.sh join  for a quick smoke test instead of the full 50 MB.
 
@@ -32,16 +36,38 @@ if [ -z "$HELPER" ]; then
     exit 1
 fi
 
-# Wi-Fi left on is the one mistake that makes a passing test meaningless, since
-# the bytes may cross a router instead of the peer-to-peer radio. The Wi-Fi
-# device is not always en0, so ask rather than assume: a hardcoded guess turns
-# this warning into silence on the machines that need it.
+# The radio has to be powered for AWDL to exist, and the two Macs must not share
+# a LAN for a pass to mean anything. Those pull in opposite directions, so check
+# both rather than repeating the earlier mistake of telling people to kill Wi-Fi.
+#
+# The Wi-Fi device is not always en0, so ask rather than assume: a hardcoded
+# guess turns these checks into silence on the machines that need them.
 WIFI_DEV=$(networksetup -listallhardwareports 2>/dev/null |
     awk '/Hardware Port: Wi-Fi/ { getline; print $2; exit }')
+
 if [ -n "${WIFI_DEV:-}" ] &&
-   [ "$(networksetup -getairportpower "$WIFI_DEV" 2>/dev/null | awk '{print $NF}')" = "On" ]; then
-    echo "WARNING: Wi-Fi is on. If both Macs can reach the same network this"
-    echo "         test proves nothing about AWDL. Turn Wi-Fi off on both."
+   [ "$(networksetup -getairportpower "$WIFI_DEV" 2>/dev/null | awk '{print $NF}')" = "Off" ]; then
+    echo "Wi-Fi is off, so AWDL cannot run and discovery will never fire."
+    echo "AWDL is a virtual interface on the Wi-Fi radio, which is why AirDrop"
+    echo "needs Wi-Fi on too."
+    echo
+    echo "Turn Wi-Fi ON, then leave it joined to no network at all (Wi-Fi menu >"
+    echo "disconnect, or just do not pick a network). No shared LAN is what this"
+    echo "test needs, not a radio that is switched off."
+    exit 1
+fi
+
+if ! ifconfig awdl0 2>/dev/null | grep -q RUNNING; then
+    echo "WARNING: awdl0 is not running, so peer-to-peer Wi-Fi may be unavailable."
+    echo "         Toggling Wi-Fi off and back on usually brings it up."
+    echo
+fi
+
+if [ -n "${WIFI_DEV:-}" ] &&
+   networksetup -getairportnetwork "$WIFI_DEV" 2>/dev/null | grep -q 'Current Wi-Fi Network'; then
+    echo "NOTE: this Mac is on a Wi-Fi network. That is fine if the other Mac is on"
+    echo "      a different one, but if they share it a pass proves nothing about"
+    echo "      AWDL. Disconnect from Wi-Fi without powering it off to be sure."
     echo
 fi
 
@@ -128,7 +154,7 @@ run_host() {
     [ -t 1 ] && printf '\r'
     printf '  received %s bytes (%s MB).            \n' "$received" "$((received / 1000000))"
     echo
-    echo "That crossed AWDL if both Macs had Wi-Fi off. Mac B printed the speed."
+    echo "That crossed AWDL if neither Mac was on a network. Mac B printed the speed."
 }
 
 run_join() {
@@ -144,9 +170,21 @@ run_join() {
                 echo "A host was discovered but the tunnel never opened, which points at"
                 echo "AWDL failing to carry the connection rather than at discovery."
             else
-                echo "Nothing was even advertised. Check that ./twomac.sh host is running"
-                echo "on the other Mac, that Bluetooth is on for both, and that the binary"
-                echo "is not quarantined: xattr -d com.apple.quarantine mcdirect-helper"
+                echo "Nothing was advertised at all. In order of likelihood:"
+                echo
+                echo "  1. Wi-Fi is off on one of the Macs. It must be ON and joined to no"
+                echo "     network. Off means no AWDL, so nothing can be discovered."
+                echo "  2. macOS denied Local Network access silently, with no prompt and no"
+                echo "     error. System Settings > Privacy & Security > Local Network:"
+                echo "     toggle Terminal off and back on, then retry."
+                echo "  3. ./twomac.sh host is not actually running on the other Mac, or its"
+                echo "     binary is quarantined: xattr -d com.apple.quarantine mcdirect-helper"
+                echo "  4. Bluetooth is off. macOS uses it to bootstrap AWDL."
+                echo
+                echo "To split a permission problem from an AWDL problem: put both Macs on"
+                echo "the same Wi-Fi network and retry. If discovery works there, the"
+                echo "permissions are fine and AWDL is the problem. If it still fails, the"
+                echo "Local Network grant is being denied."
             fi
             dump_log
             exit 1

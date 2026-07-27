@@ -70,8 +70,13 @@
 <p>
   The relay already works end to end on one machine. What it cannot prove is that bytes
   actually travel over <strong>AWDL</strong> (Apple's peer-to-peer radio) rather than
-  looping back locally. Two Macs with Wi-Fi switched off is the only way to know.
+  looping back locally. Two Macs with no network between them is the only way to know.
   The transfer is timed, and that number decides whether joining a world feels instant.
+</p>
+<p class="note">
+  Disconnect from Wi-Fi; do not switch it off. AWDL is a virtual interface on the Wi-Fi
+  radio, so powering the radio down takes AWDL with it, which is why AirDrop needs Wi-Fi
+  on as well. What this test needs is the absence of a shared network, not a dead radio.
 </p>
 
 <h2>Setup</h2>
@@ -79,7 +84,11 @@
   <li>Build on this Mac (call it <strong>Mac&nbsp;A</strong>): <code>cd helper &amp;&amp; swift build -c release</code></li>
   <li>AirDrop <strong>both</strong> <code>helper/.build/release/mcdirect-helper</code> and <code>helper/twomac.sh</code> into one folder on <strong>Mac&nbsp;B</strong>, before the network goes away.</li>
   <li>On Mac B: <code>chmod +x mcdirect-helper twomac.sh</code></li>
-  <li><strong>Turn Wi-Fi OFF on both Macs.</strong> Leave <strong>Bluetooth ON</strong>, since macOS uses it to bootstrap AWDL.</li>
+  <li>
+    <strong>Leave Wi-Fi ON on both Macs, joined to no network.</strong> Open the Wi-Fi menu and
+    disconnect, rather than switching Wi-Fi off. Leave <strong>Bluetooth ON</strong>, since macOS
+    uses it to bootstrap AWDL.
+  </li>
 </ol>
 <p class="note">
   If macOS blocks the binary on first run, right-click it in Finder and choose Open, or run
@@ -118,7 +127,7 @@
 <h2>Reading the result</h2>
 <p>
   <span class="ok">Success</span> is 50,000,000 bytes arriving on Mac A while both machines
-  have Wi-Fi off. That alone proves AWDL carried it. Mac B prints the verdict itself, so
+  are on no network. That alone proves AWDL carried it. Mac B prints the verdict itself, so
   the table below is just what it is deciding between:
 </p>
 <table>
@@ -148,7 +157,7 @@
 </p>
 
 <h2>Report back</h2>
-<p>Three things: did it transfer with Wi-Fi off, the MB/s line from Mac B, and the byte count from Mac A.</p>
+<p>Three things: did it transfer with neither Mac on a network, the MB/s line from Mac B, and the byte count from Mac A.</p>
 
 </main>
 <script>
