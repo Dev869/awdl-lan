@@ -19,21 +19,21 @@ cd "$(dirname "$0")"
 
 PORT=19999
 MB=${MB:-50}
-GOT=/tmp/mcdirect-got.bin
-LOG=$(mktemp -t mcdirect)
+GOT=/tmp/awdllan-got.bin
+LOG=$(mktemp -t awdllan)
 FIFO=""
 DISCOVERY_TIMEOUT=60
 
 trap 'kill $(jobs -p) 2>/dev/null; rm -f "$LOG" ${FIFO:+"$FIFO"}' EXIT INT TERM
 
 HELPER=""
-for candidate in ./mcdirect-helper .build/release/mcdirect-helper; do
+for candidate in ./awdl-lan-helper .build/release/awdl-lan-helper; do
     [ -x "$candidate" ] && HELPER=$candidate && break
 done
 if [ -z "$HELPER" ]; then
-    echo "No mcdirect-helper found next to this script or in .build/release."
+    echo "No awdl-lan-helper found next to this script or in .build/release."
     echo "On Mac A: swift build -c release"
-    echo "On Mac B: AirDrop both mcdirect-helper and twomac.sh into the same folder."
+    echo "On Mac B: AirDrop both awdl-lan-helper and twomac.sh into the same folder."
     exit 1
 fi
 
@@ -192,7 +192,7 @@ run_join() {
                 echo "     error. System Settings > Privacy & Security > Local Network:"
                 echo "     toggle Terminal off and back on, then retry."
                 echo "  3. ./twomac.sh host is not actually running on the other Mac, or its"
-                echo "     binary is quarantined: xattr -d com.apple.quarantine mcdirect-helper"
+                echo "     binary is quarantined: xattr -d com.apple.quarantine awdl-lan-helper"
                 echo "  4. Bluetooth is off. macOS uses it to bootstrap AWDL."
                 echo
                 echo "To split a permission problem from an AWDL problem: put both Macs on"
@@ -219,7 +219,7 @@ run_join() {
     # has consumed every byte. That measures the transfer rather than nc's
     # lifetime, and it cannot hang waiting for a close that never comes.
     local start elapsed_ms sender
-    FIFO=$(mktemp -u -t mcdirectpipe)
+    FIFO=$(mktemp -u -t awdllanpipe)
     mkfifo "$FIFO"
     nc 127.0.0.1 "$local_port" < "$FIFO" > /dev/null &
     sender=$!

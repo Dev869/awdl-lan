@@ -1,7 +1,7 @@
-package dev.lanoverdirect.gametest;
+package dev.awdllan.gametest;
 
-import dev.lanoverdirect.LanOverDirectClient;
-import dev.lanoverdirect.NearbyWorldsScreen;
+import dev.awdllan.AwdlLanClient;
+import dev.awdllan.NearbyWorldsScreen;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.client.gui.screens.TitleScreen;
@@ -36,12 +36,12 @@ public class ScreenSmokeTest implements FabricClientGameTest {
 
         context.runOnClient(client -> {
             // Discovery should be held by the open screen, and querying it must not throw.
-            LanOverDirectClient.nearbyWorlds();
-            if (LanOverDirectClient.lastError() != null) {
+            AwdlLanClient.nearbyWorlds();
+            if (AwdlLanClient.lastError() != null) {
                 // Not a failure: a machine with Local Network denied still exercises the
                 // mixins. Record it so the run is not silently misread as a clean pass.
-                LanOverDirectClient.LOG.warn("Gametest saw discovery error: {}",
-                        LanOverDirectClient.lastError());
+                AwdlLanClient.LOG.warn("Gametest saw discovery error: {}",
+                        AwdlLanClient.lastError());
             }
         });
 

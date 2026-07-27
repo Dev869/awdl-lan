@@ -20,7 +20,7 @@ loom {
         clientGametest {
             client()
             name = 'Client Game Test'
-            vmArg '-Dfabric.client.gametest.modid=lan-over-direct'
+            vmArg '-Dfabric.client.gametest.modid=awdl-lan'
             runDir = 'build/run/gametest'
             ideConfigGenerated = false
         }
@@ -41,14 +41,14 @@ processResources {
     }
     // Ship the Swift helper inside the jar; HelperBinary unpacks it at runtime.
     from('../helper/.build/release') {
-        include 'mcdirect-helper'
+        include 'awdl-lan-helper'
         into 'native'
     }
 }
 
 jar {
     from(rootProject.file('../LICENSE')) {
-        rename { "${it}_lan-over-direct" }
+        rename { "${it}_awdl-lan" }
     }
 }
 
@@ -69,7 +69,7 @@ tasks.register('selfCheck', JavaExec) {
     group = 'verification'
     description = 'Runs the HelperProcess self-check against a fake and the real helper.'
     classpath = sourceSets.test.runtimeClasspath
-    mainClass = 'dev.lanoverdirect.HelperProcessSelfCheck'
+    mainClass = 'dev.awdllan.HelperProcessSelfCheck'
     jvmArgs = ['-ea']
 }
 

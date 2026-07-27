@@ -1,0 +1,13 @@
+{
+  "awdl-lan.button.nearby": "Nearby",
+  "awdl-lan.nearby.title": "Nearby Worlds",
+  "awdl-lan.nearby.searching": "Looking for nearby Macs…",
+  "awdl-lan.chat.hosting": "Sharing over nearby Wi-Fi · room code %s",
+  "awdl-lan.nearby.sharing": "Sharing \"%s\" · room code %s",
+  "awdl-lan.nearby.entry": "%s · code %s",
+  "awdl-lan.nearby.connecting": "%s — connecting…",
+  "awdl-lan.error.denied.1": "macOS blocked Local Network access.",
+  "awdl-lan.error.denied.2": "Settings › Privacy & Security › Local Network, then restart.",
+  "awdl-lan.error.helper": "The discovery helper stopped. Restart the game.",
+  "awdl-lan.error.generic": "Discovery unavailable (%s)."
+}

@@ -1,4 +1,4 @@
-package dev.lanoverdirect;
+package dev.awdllan;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
@@ -25,23 +25,23 @@ public class NearbyWorldsScreen extends Screen {
     private static final int BUTTON_WIDTH = 240;
 
     private final Screen parent;
-    private List<LanOverDirectClient.NearbyWorld> shown = List.of();
+    private List<AwdlLanClient.NearbyWorld> shown = List.of();
     private int ticks;
 
     public NearbyWorldsScreen(Screen parent) {
-        super(Component.translatable("lan-over-direct.nearby.title"));
+        super(Component.translatable("awdl-lan.nearby.title"));
         this.parent = parent;
     }
 
     @Override
     protected void init() {
-        LanOverDirectClient.acquireBrowse();
-        shown = LanOverDirectClient.nearbyWorlds();
+        AwdlLanClient.acquireBrowse();
+        shown = AwdlLanClient.nearbyWorlds();
 
         int left = this.width / 2 - BUTTON_WIDTH / 2;
         int y = 40;
 
-        String error = LanOverDirectClient.lastError();
+        String error = AwdlLanClient.lastError();
         if (error != null) {
             for (Component line : describeError(error)) {
                 addRenderableWidget(new StringWidget(left, y, BUTTON_WIDTH, 18, line, this.font));
@@ -50,22 +50,22 @@ public class NearbyWorldsScreen extends Screen {
             y += 8;
         }
 
-        String hostingWorld = LanOverDirectClient.hostingWorld();
+        String hostingWorld = AwdlLanClient.hostingWorld();
         if (hostingWorld != null) {
             addRenderableWidget(new StringWidget(left, y, BUTTON_WIDTH, 18,
-                    Component.translatable("lan-over-direct.nearby.sharing",
-                            hostingWorld, LanOverDirectClient.hostingCode()),
+                    Component.translatable("awdl-lan.nearby.sharing",
+                            hostingWorld, AwdlLanClient.hostingCode()),
                     this.font));
             y += 26;
         }
 
         if (shown.isEmpty() && error == null) {
             addRenderableWidget(new StringWidget(left, y, BUTTON_WIDTH, 18,
-                    Component.translatable("lan-over-direct.nearby.searching"), this.font));
+                    Component.translatable("awdl-lan.nearby.searching"), this.font));
             y += 26;
         }
 
-        for (LanOverDirectClient.NearbyWorld world : shown) {
+        for (AwdlLanClient.NearbyWorld world : shown) {
             Button button = Button.builder(label(world), b -> join(world))
                     .bounds(left, y, BUTTON_WIDTH, 20)
                     .build();
@@ -80,27 +80,27 @@ public class NearbyWorldsScreen extends Screen {
                 .build());
     }
 
-    private Component label(LanOverDirectClient.NearbyWorld world) {
+    private Component label(AwdlLanClient.NearbyWorld world) {
         if (!world.ready()) {
-            return Component.translatable("lan-over-direct.nearby.connecting", world.name());
+            return Component.translatable("awdl-lan.nearby.connecting", world.name());
         }
         return world.code().isEmpty()
                 ? Component.literal(world.name())
-                : Component.translatable("lan-over-direct.nearby.entry", world.name(), world.code());
+                : Component.translatable("awdl-lan.nearby.entry", world.name(), world.code());
     }
 
     private static List<Component> describeError(String code) {
         return switch (code) {
             case "local_network_denied" -> List.of(
-                    Component.translatable("lan-over-direct.error.denied.1"),
-                    Component.translatable("lan-over-direct.error.denied.2"));
+                    Component.translatable("awdl-lan.error.denied.1"),
+                    Component.translatable("awdl-lan.error.denied.2"));
             case "helper_died", "helper_start_failed" -> List.of(
-                    Component.translatable("lan-over-direct.error.helper"));
-            default -> List.of(Component.translatable("lan-over-direct.error.generic", code));
+                    Component.translatable("awdl-lan.error.helper"));
+            default -> List.of(Component.translatable("awdl-lan.error.generic", code));
         };
     }
 
-    private void join(LanOverDirectClient.NearbyWorld world) {
+    private void join(AwdlLanClient.NearbyWorld world) {
         String address = "127.0.0.1:" + world.port();
         ConnectScreen.startConnecting(this, Minecraft.getInstance(),
                 ServerAddress.parseString(address),
@@ -111,14 +111,14 @@ public class NearbyWorldsScreen extends Screen {
     @Override
     public void tick() {
         // Peers appear, finish dialling, and leave while this screen is open.
-        if (++ticks % 20 == 0 && !LanOverDirectClient.nearbyWorlds().equals(shown)) {
+        if (++ticks % 20 == 0 && !AwdlLanClient.nearbyWorlds().equals(shown)) {
             rebuildWidgets();
         }
     }
 
     @Override
     public void removed() {
-        LanOverDirectClient.releaseBrowse();
+        AwdlLanClient.releaseBrowse();
     }
 
     @Override

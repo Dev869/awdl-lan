@@ -1,6 +1,6 @@
-package dev.lanoverdirect.mixin;
+package dev.awdllan.mixin;
 
-import dev.lanoverdirect.LanOverDirectClient;
+import dev.awdllan.AwdlLanClient;
 import net.minecraft.client.gui.screens.multiplayer.ServerSelectionList;
 import net.minecraft.client.server.LanServer;
 import org.spongepowered.asm.mixin.Mixin;
@@ -20,8 +20,8 @@ import java.util.List;
 public class ServerSelectionListMixin {
 
     @ModifyVariable(method = "updateNetworkServers", at = @At("HEAD"), argsOnly = true)
-    private List<LanServer> lanOverDirect$addNearbyWorlds(List<LanServer> servers) {
-        List<LanServer> nearby = LanOverDirectClient.nearbyLanServers();
+    private List<LanServer> awdlLan$addNearbyWorlds(List<LanServer> servers) {
+        List<LanServer> nearby = AwdlLanClient.nearbyLanServers();
         if (nearby.isEmpty()) {
             return servers;
         }

@@ -10,7 +10,7 @@
 set -u
 cd "$(dirname "$0")"
 
-HELPER=.build/release/mcdirect-helper
+HELPER=.build/release/awdl-lan-helper
 MC_PORT=19999
 # Unique per run. A fixed name collides with a leftover advertisement (Bonjour
 # renames the newcomer to "TestWorld (2)") and with any real world being shared

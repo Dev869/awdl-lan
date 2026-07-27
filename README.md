@@ -1,4 +1,4 @@
-# LAN over Direct
+# AWDL LAN
 
 Minecraft multiplayer between two Macs with no router, no network, and no
 configuration, carried over **AWDL** — the peer-to-peer Wi-Fi radio behind AirDrop
@@ -27,7 +27,7 @@ checks the packaged jar rather than trusting the build: required resources prese
 embedded binary byte-identical to the one just compiled, signature still valid, and
 the binary still executable after the jar round trip.
 
-Upload `dist/lan-over-direct-<version>.jar`. Project page copy is in
+Upload `dist/awdl-lan-<version>.jar`. Project page copy is in
 [MODRINTH.md](MODRINTH.md).
 
 ## Layout

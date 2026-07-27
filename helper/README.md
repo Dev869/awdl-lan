@@ -1,4 +1,4 @@
-# mcdirect-helper
+# awdl-lan-helper
 
 Owns the radio so the JVM doesn't have to. Advertises and discovers Minecraft
 worlds over AWDL (Apple peer-to-peer Wi-Fi) and exposes each peer as a plain
@@ -22,7 +22,7 @@ Do not switch Wi-Fi off. AWDL is a virtual interface on the Wi-Fi radio, so
 powering the radio down takes AWDL with it and discovery can never fire, which
 is the same reason AirDrop needs Wi-Fi on.
 
-AirDrop both `mcdirect-helper` and `twomac.sh` into the same folder on Mac B,
+AirDrop both `awdl-lan-helper` and `twomac.sh` into the same folder on Mac B,
 then run one command per machine. Mac A first:
 
 ```sh

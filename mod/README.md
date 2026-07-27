@@ -1,4 +1,4 @@
-# lan-over-direct (Fabric mod)
+# awdl-lan (Fabric mod)
 
 Minecraft 26.2, Fabric, macOS only. Surfaces nearby Macs' open worlds in the
 vanilla LAN list, tunnelled over Apple peer-to-peer Wi-Fi (AWDL).
@@ -20,7 +20,7 @@ Minecraft or Fabric, which is why `test.sh` can run them under plain `javac` in
 seconds. `test.sh` enforces that boundary — it fails if either file grows a game
 import.
 
-`LanOverDirectClient` owns both helper processes. `mixin/` holds the two hooks.
+`AwdlLanClient` owns both helper processes. `mixin/` holds the two hooks.
 
 ## How it reaches the UI
 

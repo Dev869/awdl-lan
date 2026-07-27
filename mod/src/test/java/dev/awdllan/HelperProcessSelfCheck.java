@@ -1,4 +1,4 @@
-package dev.lanoverdirect;
+package dev.awdllan;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
  * Runs {@link HelperProcess} against a fake helper that speaks the same JSON
  * protocol. No Minecraft, no network, no second Mac.
  *
- * <pre>javac -d out ... &amp;&amp; java -ea -cp out dev.lanoverdirect.HelperProcessSelfCheck</pre>
+ * <pre>javac -d out ... &amp;&amp; java -ea -cp out dev.awdllan.HelperProcessSelfCheck</pre>
  */
 public final class HelperProcessSelfCheck {
 
@@ -36,7 +36,7 @@ public final class HelperProcessSelfCheck {
             """;
 
     private static final Path REAL_HELPER =
-            Path.of("../helper/.build/release/mcdirect-helper");
+            Path.of("../helper/.build/release/awdl-lan-helper");
 
     public static void main(String[] args) throws Exception {
         checkParser();

@@ -9,9 +9,9 @@ set -e
 cd "$(dirname "$0")"
 
 PORTABLE=(
-    src/main/java/dev/lanoverdirect/HelperProcess.java
-    src/main/java/dev/lanoverdirect/HelperBinary.java
-    src/test/java/dev/lanoverdirect/HelperProcessSelfCheck.java
+    src/main/java/dev/awdllan/HelperProcess.java
+    src/main/java/dev/awdllan/HelperBinary.java
+    src/test/java/dev/awdllan/HelperProcessSelfCheck.java
 )
 
 if grep -lE '^import (net\.minecraft|net\.fabricmc)' "${PORTABLE[@]}"; then
@@ -25,4 +25,4 @@ export PATH="$JAVA_HOME/bin:$PATH"
 
 rm -rf out
 javac -d out "${PORTABLE[@]}"
-java -ea -cp out dev.lanoverdirect.HelperProcessSelfCheck
+java -ea -cp out dev.awdllan.HelperProcessSelfCheck

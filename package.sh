@@ -12,8 +12,8 @@ export PATH="$JAVA_HOME/bin:$PATH"
 
 VERSION=$(grep '^mod_version=' mod/gradle.properties | cut -d= -f2)
 MC_RANGE=$(python3 -c "import json;print(json.load(open('mod/src/main/resources/fabric.mod.json'))['depends']['minecraft'])")
-HELPER=helper/.build/release/mcdirect-helper
-JAR=mod/build/libs/lan-over-direct-$VERSION.jar
+HELPER=helper/.build/release/awdl-lan-helper
+JAR=mod/build/libs/awdl-lan-$VERSION.jar
 
 step() { printf '\n\033[1m▸ %s\033[0m\n' "$1"; }
 
@@ -35,20 +35,20 @@ step "Verifying the packaged jar"
 work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
 unzip -qo "$JAR" -d "$work"
 
-for required in native/mcdirect-helper fabric.mod.json lan-over-direct.mixins.json \
-                assets/lan-over-direct/icon.png assets/lan-over-direct/lang/en_us.json; do
+for required in native/awdl-lan-helper fabric.mod.json awdl-lan.mixins.json \
+                assets/awdl-lan/icon.png assets/awdl-lan/lang/en_us.json; do
     [ -e "$work/$required" ] || { echo "FAIL: jar is missing $required"; exit 1; }
 done
 
 # A stale embedded binary would ship silently and fail only on a user's machine.
-if ! cmp -s "$HELPER" "$work/native/mcdirect-helper"; then
+if ! cmp -s "$HELPER" "$work/native/awdl-lan-helper"; then
     echo "FAIL: embedded helper differs from helper/.build/release"; exit 1
 fi
 
 # It must still be a valid signed arm64 Mach-O after the round trip.
-chmod +x "$work/native/mcdirect-helper"
-codesign -v "$work/native/mcdirect-helper" 2>/dev/null || { echo "FAIL: embedded helper signature invalid"; exit 1; }
-"$work/native/mcdirect-helper" >/dev/null 2>&1 && { echo "FAIL: helper should exit 2 with no args"; exit 1; }
+chmod +x "$work/native/awdl-lan-helper"
+codesign -v "$work/native/awdl-lan-helper" 2>/dev/null || { echo "FAIL: embedded helper signature invalid"; exit 1; }
+"$work/native/awdl-lan-helper" >/dev/null 2>&1 && { echo "FAIL: helper should exit 2 with no args"; exit 1; }
 
 step "Checking jar references resolve"
 # Mixin targets, entrypoints, and lang keys are resolved by name at load time, so a
@@ -82,7 +82,7 @@ for kind, classes in fm.get("entrypoints", {}).items():
 if "icon" in fm and not (root / fm["icon"]).exists():
     problems.append(f"icon missing: {fm['icon']}")
 
-lang_path = root / "assets/lan-over-direct/lang/en_us.json"
+lang_path = root / "assets/awdl-lan/lang/en_us.json"
 if not lang_path.exists():
     problems.append("en_us.json missing")
 else:
@@ -90,7 +90,7 @@ else:
     used = set()
     for java in pathlib.Path("mod/src/main/java").rglob("*.java"):
         used |= set(re.findall(r'translatable\(\s*"([^"]+)"', java.read_text()))
-    for key in sorted(k for k in used if k.startswith("lan-over-direct")):
+    for key in sorted(k for k in used if k.startswith("awdl-lan")):
         if key not in lang:
             problems.append(f"translation key used but not defined: {key}")
 
@@ -102,12 +102,12 @@ PY
 
 mkdir -p dist
 cp "$JAR" dist/
-SIZE=$(du -h "dist/lan-over-direct-$VERSION.jar" | cut -f1)
-SHA=$(shasum -a 512 "dist/lan-over-direct-$VERSION.jar" | cut -c1-16)
+SIZE=$(du -h "dist/awdl-lan-$VERSION.jar" | cut -f1)
+SHA=$(shasum -a 512 "dist/awdl-lan-$VERSION.jar" | cut -c1-16)
 
 cat <<EOF
 
-$(printf '\033[1;32m✓ dist/lan-over-direct-%s.jar\033[0m' "$VERSION")  ($SIZE, sha512 ${SHA}...)
+$(printf '\033[1;32m✓ dist/awdl-lan-%s.jar\033[0m' "$VERSION")  ($SIZE, sha512 ${SHA}...)
 
 Upload that one file to Modrinth. Settings to select:
 

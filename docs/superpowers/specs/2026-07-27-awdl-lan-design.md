@@ -1,4 +1,4 @@
-# lan-over-direct — Design
+# awdl-lan — Design
 
 Date: 2026-07-27
 Status: Implemented and verified end to end on two Macs (v0.1.0)
@@ -47,22 +47,22 @@ existing mod uses AWDL.
 
 ## Components
 
-### `mcdirect-helper` (Swift, macOS 13+)
+### `awdl-lan-helper` (Swift, macOS 13+)
 
 A command-line binary, roughly 300 lines, shipped inside the mod jar. It speaks
 newline-delimited JSON on stdin/stdout and does all networking.
 
 *Host mode*: opens an `NWListener` with `parameters.includePeerToPeer = true`,
-advertising the Bonjour service `_mcdirect._tcp`. Each inbound `NWConnection`
+advertising the Bonjour service `_awdllan._tcp`. Each inbound `NWConnection`
 is paired with a fresh TCP socket to `127.0.0.1:<mcPort>`, and bytes are pumped
 in both directions until either side closes.
 
-*Browse mode*: runs an `NWBrowser` for `_mcdirect._tcp`, reporting peers as they
+*Browse mode*: runs an `NWBrowser` for `_awdllan._tcp`, reporting peers as they
 appear and disappear. On a connect command it dials the peer's endpoint and
 binds a local listener on `127.0.0.1:0`, reporting the assigned port back to
 the mod.
 
-### `lan-over-direct` (Fabric mod, Java)
+### `awdl-lan` (Fabric mod, Java)
 
 Deliberately thin: a process manager and a list renderer, containing no
 networking logic of its own.
@@ -211,7 +211,7 @@ enough margin that a more precise figure would not change any decision.
 
 ## Build order
 
-**Phase 0 — de-risk.** `mcdirect-helper` alone. Two Macs, Wi-Fi disabled, piping
+**Phase 0 — de-risk.** `awdl-lan-helper` alone. Two Macs, Wi-Fi disabled, piping
 a file between them. This proves the local-network permission story and measures
 real AWDL throughput before any mod code exists. It is a go/no-go gate: if the
 permission model blocks a jar-extracted binary and a minimal `.app` bundle with

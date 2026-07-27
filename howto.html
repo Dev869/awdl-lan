@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Two-Mac AWDL Test — lan-over-direct</title>
+<title>Two-Mac AWDL Test — awdl-lan</title>
 <style>
   :root {
     --bg: #fbfbfa; --fg: #1a1a18; --muted: #6b6b66; --rule: #e2e2dd;
@@ -82,8 +82,8 @@
 <h2>Setup</h2>
 <ol>
   <li>Build on this Mac (call it <strong>Mac&nbsp;A</strong>): <code>cd helper &amp;&amp; swift build -c release</code></li>
-  <li>AirDrop <strong>both</strong> <code>helper/.build/release/mcdirect-helper</code> and <code>helper/twomac.sh</code> into one folder on <strong>Mac&nbsp;B</strong>, before the network goes away.</li>
-  <li>On Mac B: <code>chmod +x mcdirect-helper twomac.sh</code></li>
+  <li>AirDrop <strong>both</strong> <code>helper/.build/release/awdl-lan-helper</code> and <code>helper/twomac.sh</code> into one folder on <strong>Mac&nbsp;B</strong>, before the network goes away.</li>
+  <li>On Mac B: <code>chmod +x awdl-lan-helper twomac.sh</code></li>
   <li>
     <strong>Leave Wi-Fi ON on both Macs, joined to no network.</strong> Open the Wi-Fi menu and
     disconnect, rather than switching Wi-Fi off. Leave <strong>Bluetooth ON</strong>, since macOS
@@ -92,7 +92,7 @@
 </ol>
 <p class="note">
   If macOS blocks the binary on first run, right-click it in Finder and choose Open, or run
-  <code>xattr -d com.apple.quarantine mcdirect-helper</code>. It is ad-hoc signed, not notarised.
+  <code>xattr -d com.apple.quarantine awdl-lan-helper</code>. It is ad-hoc signed, not notarised.
 </p>
 
 <h2>Run it</h2>

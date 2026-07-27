@@ -1,4 +1,4 @@
-package dev.lanoverdirect;
+package dev.awdllan;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -28,9 +28,9 @@ import java.util.concurrent.ThreadLocalRandom;
  * <p>Every failure path is non-fatal: a missing, blocked, or dead helper leaves
  * vanilla multiplayer untouched.
  */
-public final class LanOverDirectClient implements ClientModInitializer {
+public final class AwdlLanClient implements ClientModInitializer {
 
-    public static final Logger LOG = LoggerFactory.getLogger("lan-over-direct");
+    public static final Logger LOG = LoggerFactory.getLogger("awdl-lan");
 
     private static final Map<String, HelperProcess.Peer> PEERS = new ConcurrentHashMap<>();
     private static final Map<String, Integer> TUNNELS = new ConcurrentHashMap<>();
@@ -56,7 +56,7 @@ public final class LanOverDirectClient implements ClientModInitializer {
         }
         try {
             helperPath = HelperBinary.extract(
-                    FabricLoader.getInstance().getConfigDir().resolve("lan-over-direct"));
+                    FabricLoader.getInstance().getConfigDir().resolve("awdl-lan"));
         } catch (Exception e) {
             LOG.warn("Could not unpack the helper, peer-to-peer play disabled: {}", e.toString());
             return;
@@ -69,7 +69,7 @@ public final class LanOverDirectClient implements ClientModInitializer {
 
         // Watching the integrated server's published state covers both publishServer
         // overloads and unpublishServer in one place, with no mixin.
-        ClientTickEvents.END_CLIENT_TICK.register(LanOverDirectClient::tick);
+        ClientTickEvents.END_CLIENT_TICK.register(AwdlLanClient::tick);
     }
 
     // MARK: - Hosting
@@ -111,7 +111,7 @@ public final class LanOverDirectClient implements ClientModInitializer {
             var player = Minecraft.getInstance().player;
             if (player != null) {
                 player.sendSystemMessage(
-                        Component.translatable("lan-over-direct.chat.hosting", code));
+                        Component.translatable("awdl-lan.chat.hosting", code));
             }
         } catch (Exception e) {
             LOG.warn("Could not start hosting: {}", e.toString());

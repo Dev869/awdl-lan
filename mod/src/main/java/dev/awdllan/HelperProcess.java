@@ -1,4 +1,4 @@
-package dev.lanoverdirect;
+package dev.awdllan;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Owns the mcdirect-helper subprocess and translates its JSON line protocol
+ * Owns the awdl-lan-helper subprocess and translates its JSON line protocol
  * into callbacks.
  *
  * <p>Everything radio-related lives in the helper. This class only ever deals
@@ -58,9 +58,9 @@ public final class HelperProcess implements AutoCloseable {
         this.commands = new BufferedWriter(
                 new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8));
 
-        startDaemon("mcdirect-events", () -> readLines(process.getInputStream(), this::dispatch, true));
+        startDaemon("awdl-lan-events", () -> readLines(process.getInputStream(), this::dispatch, true));
         // stderr must be drained or its pipe buffer fills and the helper blocks mid-relay.
-        startDaemon("mcdirect-trace", () -> readLines(process.getErrorStream(), listener::onTrace, false));
+        startDaemon("awdl-lan-trace", () -> readLines(process.getErrorStream(), listener::onTrace, false));
     }
 
     public static HelperProcess start(Path binary, List<String> args, Listener listener) throws IOException {

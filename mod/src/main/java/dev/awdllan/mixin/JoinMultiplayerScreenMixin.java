@@ -1,7 +1,7 @@
-package dev.lanoverdirect.mixin;
+package dev.awdllan.mixin;
 
-import dev.lanoverdirect.LanOverDirectClient;
-import dev.lanoverdirect.NearbyWorldsScreen;
+import dev.awdllan.AwdlLanClient;
+import dev.awdllan.NearbyWorldsScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -25,21 +25,21 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
     }
 
     @Inject(method = "init", at = @At("TAIL"))
-    private void lanOverDirect$addNearbyButton(CallbackInfo ci) {
-        LanOverDirectClient.acquireBrowse();
-        if (!dev.lanoverdirect.HelperBinary.isSupportedPlatform()) {
+    private void awdlLan$addNearbyButton(CallbackInfo ci) {
+        AwdlLanClient.acquireBrowse();
+        if (!dev.awdllan.HelperBinary.isSupportedPlatform()) {
             return;
         }
         Screen self = (Screen) (Object) this;
         addRenderableWidget(Button.builder(
-                        Component.translatable("lan-over-direct.button.nearby"),
+                        Component.translatable("awdl-lan.button.nearby"),
                         b -> Minecraft.getInstance().setScreenAndShow(new NearbyWorldsScreen(self)))
                 .bounds(this.width - 84, 6, 78, 20)
                 .build());
     }
 
     @Inject(method = "removed", at = @At("HEAD"))
-    private void lanOverDirect$stopBrowsing(CallbackInfo ci) {
-        LanOverDirectClient.releaseBrowse();
+    private void awdlLan$stopBrowsing(CallbackInfo ci) {
+        AwdlLanClient.releaseBrowse();
     }
 }

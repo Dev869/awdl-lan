@@ -1,4 +1,4 @@
-package dev.lanoverdirect;
+package dev.awdllan;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -9,7 +9,7 @@ import java.security.MessageDigest;
 import java.util.HexFormat;
 
 /**
- * Unpacks the bundled mcdirect-helper to a stable on-disk location.
+ * Unpacks the bundled awdl-lan-helper to a stable on-disk location.
  *
  * <p>The binary cannot run from inside the jar, so it is written to a cache
  * directory named by content hash. Hashing means an updated mod ships an
@@ -19,7 +19,7 @@ import java.util.HexFormat;
 public final class HelperBinary {
 
     /** Path inside the jar. Populated by the build from helper/.build/release/. */
-    private static final String RESOURCE = "/native/mcdirect-helper";
+    private static final String RESOURCE = "/native/awdl-lan-helper";
 
     private HelperBinary() {}
 
@@ -36,7 +36,7 @@ public final class HelperBinary {
     public static Path extract(Path cacheDir) throws IOException {
         byte[] binary = readResource();
         String hash = sha256(binary).substring(0, 16);
-        Path target = cacheDir.resolve("mcdirect-helper-" + hash);
+        Path target = cacheDir.resolve("awdl-lan-helper-" + hash);
 
         if (Files.isExecutable(target) && Files.size(target) == binary.length) {
             return target;   // already unpacked and unchanged
@@ -46,7 +46,7 @@ public final class HelperBinary {
 
         // Write to a temp name and move into place, so a crash midway cannot leave
         // a truncated binary that looks valid to the size check above.
-        Path staging = Files.createTempFile(cacheDir, "mcdirect-", ".tmp");
+        Path staging = Files.createTempFile(cacheDir, "awdllan-", ".tmp");
         try {
             Files.write(staging, binary);
             if (!staging.toFile().setExecutable(true, true)) {

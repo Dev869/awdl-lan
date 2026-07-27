@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "id": "lan-over-direct",
+  "id": "awdl-lan",
   "version": "${version}",
-  "name": "LAN over Direct",
+  "name": "AWDL LAN",
   "description": "Play together over Apple peer-to-peer Wi-Fi (AWDL). No router, no network, no setup. macOS only, client-side only.",
   "authors": [
     "Devin Wilson"
   ],
   "license": "MIT",
-  "icon": "assets/lan-over-direct/icon.png",
+  "icon": "assets/awdl-lan/icon.png",
   "environment": "client",
   "entrypoints": {
     "client": [
-      "dev.lanoverdirect.LanOverDirectClient"
+      "dev.awdllan.AwdlLanClient"
     ],
     "fabric-client-gametest": [
-      "dev.lanoverdirect.gametest.ScreenSmokeTest"
+      "dev.awdllan.gametest.ScreenSmokeTest"
     ]
   },
   "mixins": [
     {
-      "config": "lan-over-direct.mixins.json",
+      "config": "awdl-lan.mixins.json",
       "environment": "client"
     }
   ],
@@ -29,5 +29,10 @@
     "minecraft": ">=26.1 <26.3",
     "java": ">=25",
     "fabric-api": "*"
+  },
+  "contact": {
+    "homepage": "https://modrinth.com/mod/awdl-lan",
+    "sources": "https://github.com/Dev869/awdl-lan",
+    "issues": "https://github.com/Dev869/awdl-lan/issues"
   }
 }

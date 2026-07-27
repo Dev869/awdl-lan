@@ -6,4 +6,4 @@ pluginManagement {
     }
 }
 
-rootProject.name = 'lan-over-direct'
+rootProject.name = 'awdl-lan'

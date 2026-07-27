@@ -1,14 +1,14 @@
 # Modrinth submission
 
 Everything below is paste-ready. Run `./package.sh` first; upload only
-`dist/lan-over-direct-<version>.jar`.
+`dist/awdl-lan-<version>.jar`.
 
 ## Project settings
 
 | Field | Value |
 |---|---|
-| Name | LAN over Direct |
-| Slug | `lan-over-direct` |
+| Name | AWDL LAN |
+| Slug | `awdl-lan` |
 | Summary | Play together over Apple peer-to-peer Wi-Fi. No router, no network, no setup. macOS only. |
 | Categories | Multiplayer, Utility |
 | Environment | Client **required**, server **unsupported** |

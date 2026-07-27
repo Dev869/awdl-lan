@@ -2,9 +2,9 @@
 import PackageDescription
 
 let package = Package(
-    name: "mcdirect-helper",
+    name: "awdl-lan-helper",
     platforms: [.macOS(.v13)],
     targets: [
-        .executableTarget(name: "mcdirect-helper", path: "Sources/mcdirect-helper")
+        .executableTarget(name: "awdl-lan-helper", path: "Sources/awdl-lan-helper")
     ]
 )

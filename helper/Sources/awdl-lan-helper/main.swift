@@ -1,16 +1,16 @@
 import Foundation
 import Network
 
-// mcdirect-helper — owns the radio so the JVM doesn't have to.
+// awdl-lan-helper — owns the radio so the JVM doesn't have to.
 //
-// host mode:   advertise _mcdirect._tcp over AWDL, relay each peer to 127.0.0.1:<port>
+// host mode:   advertise _awdllan._tcp over AWDL, relay each peer to 127.0.0.1:<port>
 // browse mode: find peers, and on `connect` expose one as a loopback port
 //
 // Speaks newline-delimited JSON on stdin/stdout. Closing stdin kills it, so it
 // can never outlive Minecraft.
 
-let serviceType = "_mcdirect._tcp"
-let q = DispatchQueue(label: "mcdirect")
+let serviceType = "_awdllan._tcp"
+let q = DispatchQueue(label: "awdllan")
 
 // MARK: - Output
 
@@ -275,7 +275,7 @@ case "host":
 case "browse":
     runBrowse(autoConnect: args.contains("--auto"), match: flag("--match"))
 default:
-    FileHandle.standardError.write("usage: mcdirect-helper host --port N [--name X] [--code NNNN] | browse [--auto] [--match NAME]\n".data(using: .utf8)!)
+    FileHandle.standardError.write("usage: awdl-lan-helper host --port N [--name X] [--code NNNN] | browse [--auto] [--match NAME]\n".data(using: .utf8)!)
     exit(2)
 }
 

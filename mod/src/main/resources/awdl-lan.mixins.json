@@ -1,6 +1,6 @@
 {
   "required": true,
-  "package": "dev.lanoverdirect.mixin",
+  "package": "dev.awdllan.mixin",
   "compatibilityLevel": "JAVA_25",
   "client": [
     "JoinMultiplayerScreenMixin",
