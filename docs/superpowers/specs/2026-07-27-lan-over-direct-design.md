@@ -138,8 +138,37 @@ roughly four players. Apple also notes that peer-to-peer transmission can be
 choppy until the OS elevates the link to realtime mode — whether Minecraft's
 traffic pattern triggers that elevation is unknown and is a Phase 0 measurement.
 
-Apple Silicon requires at least an ad-hoc code signature (`codesign -s -`),
-applied at build time. This needs no Apple Developer account.
+Apple Silicon requires at least an ad-hoc code signature. **Resolved in Phase 0:**
+the Swift linker applies one automatically (`flags=0x20002(adhoc,linker-signed)`),
+so no signing step is needed.
+
+## Phase 0 results (2026-07-27, macOS 26.5.1, Swift 6.3.3, arm64)
+
+Single-machine end-to-end run via `helper/test.sh`: 300,000 bytes relayed
+byte-identical through loopback client → Bonjour-discovered peer connection →
+host helper → destination socket.
+
+Confirmed working: service advertisement, `NWBrowser` discovery, TXT record
+carrying the room code and world name, loopback tunnel binding, bidirectional
+relay.
+
+**Local network permission did not block a bare CLI binary.** No
+`local_network_denied`, no prompt, no `PolicyDenied`. This was the primary
+design risk and it did not materialise on macOS 26.5.1. The error path stays in
+place regardless, since the grant is per-machine and other systems may differ.
+
+Two bugs found and fixed, both worth recording:
+
+1. `NWListener` and `NWBrowser` are not retained by the framework. Started
+   instances must be held or they die when the creating function returns.
+2. The relay originally cancelled both connections on `isComplete`. A half-close
+   on one direction would therefore tear down a peer connection still in
+   `preparing`, discarding all queued data. Each direction must close
+   independently, propagating the FIN via `send(content: nil, isComplete: true)`.
+
+**Still unverified — requires a second Mac:** that traffic actually traverses
+AWDL with Wi-Fi disabled, real peer-to-peer throughput, and whether Minecraft's
+traffic pattern triggers Apple's realtime-mode elevation.
 
 ## Build order
 
