@@ -3,7 +3,7 @@ build/
 *.class
 out/
 .gradle/
-build/
 run/
 .DS_Store
 dist/
+.impeccable/

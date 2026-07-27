@@ -36,8 +36,7 @@ Upload `dist/awdl-lan-<version>.jar`. Project page copy is in
 |---|---|
 | `helper/` | Swift binary. Owns AWDL, speaks JSON lines on stdio. |
 | `mod/` | Fabric mod. Process management and UI. |
-| `docs/superpowers/specs/` | Design spec, including revisions and what was measured. |
-| `howto.html` | Two-Mac AWDL transport test. |
+| `docs/DESIGN.md` | Design, including revisions and what was measured. |
 
 ## Testing
 
@@ -47,13 +46,9 @@ mod/test.sh           # transport classes under plain javac, no Minecraft
 cd mod && gradle runClient
 ```
 
-`mod/test.sh` enforces that `HelperProcess` and `HelperBinary` never import
+`helper/twomac.sh` runs the two-Mac transport test. `mod/test.sh` enforces that `HelperProcess` and `HelperBinary` never import
 Minecraft or Fabric. That boundary is what keeps them testable in seconds, and it
 broke silently once already.
-
-A client gametest (`gradle runClientGametest`) opens the screens the mod mixes
-into. Booting to the title screen proves nothing about them: those classes only
-load when Multiplayer opens, and mixins apply at class load.
 
 ## Design notes
 

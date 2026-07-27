@@ -13,9 +13,6 @@
   "entrypoints": {
     "client": [
       "dev.awdllan.AwdlLanClient"
-    ],
-    "fabric-client-gametest": [
-      "dev.awdllan.gametest.ScreenSmokeTest"
     ]
   },
   "mixins": [
