@@ -32,14 +32,11 @@ var liveListeners: [NWListener] = []
 var liveBrowsers: [NWBrowser] = []
 var liveConnections: [NWConnection] = []
 
-func watch(_ connection: NWConnection, _ label: String, onFailure: (() -> Void)? = nil) {
+func watch(_ connection: NWConnection, _ label: String) {
     liveConnections.append(connection)
     connection.stateUpdateHandler = { state in
         trace("\(label): \(state)")
-        if case .failed(let e) = state {
-            trace("\(label) failed: \(e)")
-            onFailure?()
-        }
+        if case .failed(let e) = state { trace("\(label) failed: \(e)") }
     }
 }
 
@@ -208,6 +205,72 @@ func runBrowse(autoConnect: Bool, match: String?) {
     browser.start(queue: q)
 }
 
+/// Open one connection to a discovered world on behalf of one attached local client.
+///
+/// By name first. A browse result carries the interface it arrived over, and dialling
+/// that endpoint pins the attempt to that one interface — so a world sighted over
+/// Wi-Fi gets dialled over Wi-Fi even when only the peer-to-peer path can reach it.
+/// Resolving the name lets the stack try every path and keep whichever answers.
+///
+/// If the name does not come up we fall back to a sighting, which is a path we know
+/// existed a moment ago. Bonjour renaming a collision out from under us should cost a
+/// retry, not the join.
+///
+/// On a deadline rather than on failure, because a name with nothing behind it does
+/// not fail — it sits in `preparing` indefinitely, and Minecraft sits with it. The
+/// budget is two attempts inside vanilla's own 30s connect timeout, with enough room
+/// in each for AWDL's slow first association.
+let dialTimeout: TimeInterval = 10
+
+func dial(id: String, for client: NWConnection, byName: Bool) {
+    let endpoint: NWEndpoint? = byName
+        ? .service(name: id, type: serviceType, domain: "local", interface: nil)
+        : peers[id]?.first
+    guard let endpoint else {
+        trace("dial \(id): nothing left to try")
+        client.cancel()
+        return
+    }
+
+    let peer = NWConnection(to: endpoint, using: p2pParameters())
+    liveConnections.append(peer)
+    var settled = false   // relaying or given up; all mutations land on `q`
+
+    /// One attempt is over. Either hand the client to the fallback or close it — a
+    /// client left holding a socket that will never speak is the worst outcome here.
+    func giveUp(_ why: String) {
+        guard !settled else { return }
+        settled = true
+        trace("dial \(id): \(why)")
+        peer.cancel()
+        if byName {
+            dial(id: id, for: client, byName: false)
+        } else {
+            client.cancel()
+        }
+    }
+
+    peer.stateUpdateHandler = { state in
+        trace("tunnel.peer\(byName ? "" : " (retry)"): \(state)")
+        switch state {
+        case .ready:
+            // Pumping only once the peer is up keeps the client's bytes in its own
+            // socket buffer until there is somewhere to put them, which is what makes
+            // handing the client to a second attempt safe.
+            guard !settled else { return }
+            settled = true
+            relay(client, peer)
+        case .failed(let e):
+            giveUp("failed: \(e)")
+        default:
+            break
+        }
+    }
+
+    q.asyncAfter(deadline: .now() + dialTimeout) { giveUp("no answer in \(Int(dialTimeout))s") }
+    peer.start(queue: q)
+}
+
 func connect(id: String) {
     guard peers[id] != nil else {
         emit(["event": "error", "code": "unknown_peer", "message": id])
@@ -217,13 +280,6 @@ func connect(id: String) {
         emit(["event": "connected", "id": id, "localPort": Int(p.rawValue)])
         return
     }
-
-    // Dial the world by name rather than by the endpoint we happened to see it on.
-    // A browse result carries the interface it arrived over, and connecting to that
-    // endpoint pins the dial to that one interface — so a world sighted over Wi-Fi
-    // gets dialled over Wi-Fi even when only the AWDL path can actually reach it.
-    // Resolving the name lets the stack try every path and keep whichever answers.
-    let endpoint = NWEndpoint.service(name: id, type: serviceType, domain: "local", interface: nil)
 
     // Loopback only — nothing outside this machine should reach the tunnel mouth.
     let localParams = NWParameters.tcp
@@ -240,14 +296,9 @@ func connect(id: String) {
     // instead of a listener that was cancelled after the first attempt.
     listener.newConnectionHandler = { client in
         trace("connect: local client attached, dialling peer")
-        let peer = NWConnection(to: endpoint, using: p2pParameters())
         watch(client, "tunnel.client")
-        // A peer that never comes up has to take the client down with it, or Minecraft
-        // waits out its own timeout on a socket that will never speak.
-        watch(peer, "tunnel.peer") { client.cancel() }
         client.start(queue: q)
-        peer.start(queue: q)
-        relay(client, peer)
+        dial(id: id, for: client, byName: true)
     }
 
     listener.stateUpdateHandler = { state in

@@ -10,8 +10,9 @@ Fixes joining while connected to a Wi-Fi network.
 - Joining is no longer one-shot. The connection to a nearby world was torn down
   after the first attempt, so leaving a world and coming back, or retrying after
   a failed join, hit a dead port until the world was rediscovered.
-- A world that stops responding mid-join now drops the connection instead of
-  leaving Minecraft waiting on it.
+- A world that stops responding mid-join now gets one retry on the path it was
+  last seen on, then drops the connection instead of leaving Minecraft waiting
+  on it.
 
 ## 1.0.0
 
