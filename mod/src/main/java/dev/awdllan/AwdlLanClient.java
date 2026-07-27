@@ -189,8 +189,8 @@ public final class AwdlLanClient implements ClientModInitializer {
                 // It is shown, not enforced: gating the join would mean a text-entry
                 // screen, and vanilla Open to LAN gates nothing either.
                 String label = peer.code().isEmpty()
-                        ? peer.name() + " (nearby)"
-                        : peer.name() + " (nearby · " + peer.code() + ")";
+                        ? fromPeer(peer.name()) + " (nearby)"
+                        : fromPeer(peer.name()) + " (nearby · " + fromPeer(peer.code()) + ")";
                 entries.add(new LanServer(label, "127.0.0.1:" + tunnel.getValue()));
             }
         }
@@ -200,6 +200,19 @@ public final class AwdlLanClient implements ClientModInitializer {
     /** Last error code, or null. {@code local_network_denied} is the one players must be told about. */
     public static String lastError() {
         return lastError;
+    }
+
+    /**
+     * Text from a peer, made safe to put on screen.
+     *
+     * <p>World names and room codes arrive in a Bonjour record written by whoever is
+     * in radio range, and the font renderer acts on section signs in raw strings. A
+     * world called {@code §aVerified} would render as though the mod had said it.
+     * Strip the marker and cap the length so a long name cannot push a list entry
+     * off its row either.
+     */
+    private static String fromPeer(String text) {
+        return text.replace('§', '?').substring(0, Math.min(text.length(), 48));
     }
 
     /**
@@ -217,7 +230,8 @@ public final class AwdlLanClient implements ClientModInitializer {
         List<NearbyWorld> worlds = new ArrayList<>();
         for (HelperProcess.Peer peer : PEERS.values()) {
             Integer port = TUNNELS.get(peer.id());
-            worlds.add(new NearbyWorld(peer.id(), peer.name(), peer.code(), port == null ? -1 : port));
+            worlds.add(new NearbyWorld(peer.id(), fromPeer(peer.name()), fromPeer(peer.code()),
+                    port == null ? -1 : port));
         }
         worlds.sort(Comparator.comparing(NearbyWorld::name).thenComparing(NearbyWorld::id));
         return worlds;

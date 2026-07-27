@@ -212,46 +212,50 @@ func runBrowse(autoConnect: Bool, match: String?) {
 /// Wi-Fi gets dialled over Wi-Fi even when only the peer-to-peer path can reach it.
 /// Resolving the name lets the stack try every path and keep whichever answers.
 ///
-/// If the name does not come up we fall back to a sighting, which is a path we know
-/// existed a moment ago. Bonjour renaming a collision out from under us should cost a
-/// retry, not the join.
+/// If the name does not come up we work through the sightings, each of which is a
+/// path that existed a moment ago. Bonjour renaming a collision out from under us
+/// should cost a retry, not the join.
 ///
 /// On a deadline rather than on failure, because a name with nothing behind it does
-/// not fail — it sits in `preparing` indefinitely, and Minecraft sits with it. The
-/// budget is two attempts inside vanilla's own 30s connect timeout, with enough room
-/// in each for AWDL's slow first association.
-let dialTimeout: TimeInterval = 10
+/// not fail — it sits in `preparing` indefinitely, and Minecraft sits with it.
+let dialTimeout: TimeInterval = 8
 
-func dial(id: String, for client: NWConnection, byName: Bool) {
-    let endpoint: NWEndpoint? = byName
-        ? .service(name: id, type: serviceType, domain: "local", interface: nil)
-        : peers[id]?.first
-    guard let endpoint else {
+/// Every path worth trying for a world, best first.
+///
+/// Sightings are a set, so picking one of them arbitrarily can land on exactly the
+/// unreachable interface the by-name dial exists to avoid. Try them all instead —
+/// capped, because a chain of dead paths must still finish inside vanilla's own 30s
+/// connect timeout.
+func dialCandidates(_ id: String) -> [NWEndpoint] {
+    let byName = NWEndpoint.service(name: id, type: serviceType, domain: "local", interface: nil)
+    let sightings = (peers[id] ?? []).filter { $0 != byName }
+    return Array(([byName] + sightings).prefix(3))
+}
+
+func dial(id: String, for client: NWConnection, candidates: [NWEndpoint]) {
+    guard let endpoint = candidates.first else {
         trace("dial \(id): nothing left to try")
         client.cancel()
         return
     }
+    let remaining = Array(candidates.dropFirst())
 
     let peer = NWConnection(to: endpoint, using: p2pParameters())
     liveConnections.append(peer)
     var settled = false   // relaying or given up; all mutations land on `q`
 
-    /// One attempt is over. Either hand the client to the fallback or close it — a
-    /// client left holding a socket that will never speak is the worst outcome here.
+    /// This attempt is over. Hand the client to the next path, or close it — a client
+    /// left holding a socket that will never speak is the worst outcome here.
     func giveUp(_ why: String) {
         guard !settled else { return }
         settled = true
-        trace("dial \(id): \(why)")
+        trace("dial \(id) via \(endpoint): \(why)")
         peer.cancel()
-        if byName {
-            dial(id: id, for: client, byName: false)
-        } else {
-            client.cancel()
-        }
+        dial(id: id, for: client, candidates: remaining)
     }
 
     peer.stateUpdateHandler = { state in
-        trace("tunnel.peer\(byName ? "" : " (retry)"): \(state)")
+        trace("tunnel.peer (\(remaining.count) paths left): \(state)")
         switch state {
         case .ready:
             // Pumping only once the peer is up keeps the client's bytes in its own
@@ -276,8 +280,14 @@ func connect(id: String) {
         emit(["event": "error", "code": "unknown_peer", "message": id])
         return
     }
-    if let open = tunnels[id], let p = open.port {
-        emit(["event": "connected", "id": id, "localPort": Int(p.rawValue)])
+    // Guard on the tunnel existing, not on it having a port yet. A second `connect`
+    // arriving in the gap before the first listener reports ready would otherwise
+    // bind a second mouth and leak the first, leaving the caller holding the port of
+    // a tunnel nothing points at.
+    if let open = tunnels[id] {
+        if let p = open.port {
+            emit(["event": "connected", "id": id, "localPort": Int(p.rawValue)])
+        }
         return
     }
 
@@ -298,7 +308,7 @@ func connect(id: String) {
         trace("connect: local client attached, dialling peer")
         watch(client, "tunnel.client")
         client.start(queue: q)
-        dial(id: id, for: client, byName: true)
+        dial(id: id, for: client, candidates: dialCandidates(id))
     }
 
     listener.stateUpdateHandler = { state in

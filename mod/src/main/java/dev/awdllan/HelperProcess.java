@@ -250,7 +250,31 @@ public final class HelperProcess implements AutoCloseable {
         return -1;
     }
 
-    private static String escape(String s) {
-        return s.replace("\\", "\\\\").replace("\"", "\\\"");
+    /**
+     * Escapes a value for the one-line JSON command protocol.
+     *
+     * <p>Control characters matter as much as quotes here. This escapes an id that
+     * came from a Bonjour service name advertised by whoever is in radio range, and
+     * the protocol is newline-delimited, so a raw newline in that name would split one
+     * command into two lines and hand the second to the helper's parser as a command
+     * of the peer's choosing.
+     */
+    static String escape(String s) {
+        StringBuilder out = new StringBuilder(s.length() + 8);
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '\\' -> out.append("\\\\");
+                case '"' -> out.append("\\\"");
+                default -> {
+                    if (c < 0x20 || c == 0x7f) {
+                        out.append(String.format("\\u%04x", (int) c));
+                    } else {
+                        out.append(c);
+                    }
+                }
+            }
+        }
+        return out.toString();
     }
 }

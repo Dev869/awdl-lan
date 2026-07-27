@@ -71,3 +71,10 @@ out of reach without a separate mappings build.
 
 macOS only, by construction. Roughly 2–4 players before Apple's peer-to-peer
 protocol degrades. Traffic is unencrypted, matching vanilla Open to LAN.
+
+A shared world is open to anyone in radio range. The room code is advertised in
+the clear and is shown to disambiguate two worlds with the same name, not checked
+on join — same as vanilla Open to LAN, which gates nothing either. The difference
+worth knowing is reach: vanilla LAN needs an attacker on your network, and this
+needs only proximity, since AWDL carries no network to join. Treat sharing a world
+the way you would treat sharing it on open Wi-Fi.
