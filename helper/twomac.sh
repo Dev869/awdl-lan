@@ -21,9 +21,10 @@ PORT=19999
 MB=${MB:-50}
 GOT=/tmp/mcdirect-got.bin
 LOG=$(mktemp -t mcdirect)
+FIFO=""
 DISCOVERY_TIMEOUT=60
 
-trap 'kill $(jobs -p) 2>/dev/null; rm -f "$LOG"' EXIT INT TERM
+trap 'kill $(jobs -p) 2>/dev/null; rm -f "$LOG" ${FIFO:+"$FIFO"}' EXIT INT TERM
 
 HELPER=""
 for candidate in ./mcdirect-helper .build/release/mcdirect-helper; do
@@ -70,6 +71,19 @@ if [ -n "${WIFI_DEV:-}" ] &&
     echo "      AWDL. Disconnect from Wi-Fi without powering it off to be sure."
     echo
 fi
+
+# macOS `date` has no sub-second format, and whole seconds are too coarse to
+# judge a small transfer: a 5 MB smoke test over loopback lands inside one tick
+# and reads as though it were slow. Use python3 when it is there, which on a Mac
+# with the developer tools it always is, and fall back to whole seconds.
+PYTHON=$(command -v python3 2>/dev/null || true)
+now_ms() {
+    if [ -n "$PYTHON" ]; then
+        "$PYTHON" -c 'import time; print(int(time.time() * 1000))'
+    else
+        echo $(( $(date +%s) * 1000 ))
+    fi
+}
 
 # Wait for a JSON event to show up in the helper's log.
 # 0 = found it, 1 = timed out, 2 = macOS denied Local Network access.
@@ -197,17 +211,34 @@ run_join() {
     echo
     echo "Pushing $MB MB..."
 
-    local start elapsed
-    start=$(date +%s)
-    head -c $((MB * 1000000)) /dev/urandom | nc 127.0.0.1 "$local_port"
-    elapsed=$(( $(date +%s) - start ))
-    [ $elapsed -lt 1 ] && elapsed=1
+    # nc does not exit when it runs out of input: it half-closes and waits for the
+    # far end to close, and the listener on Mac A is holding the connection open
+    # too, so both sit there forever. Its exit is therefore useless as a stopwatch.
+    #
+    # Feed it through a fifo instead and time the producer, which returns once nc
+    # has consumed every byte. That measures the transfer rather than nc's
+    # lifetime, and it cannot hang waiting for a close that never comes.
+    local start elapsed_ms sender
+    FIFO=$(mktemp -u -t mcdirectpipe)
+    mkfifo "$FIFO"
+    nc 127.0.0.1 "$local_port" < "$FIFO" > /dev/null &
+    sender=$!
+
+    start=$(now_ms)
+    head -c $((MB * 1000000)) /dev/urandom > "$FIFO"
+    elapsed_ms=$(( $(now_ms) - start ))
+    [ $elapsed_ms -lt 1 ] && elapsed_ms=1
+
+    kill "$sender" 2>/dev/null
+    rm -f "$FIFO"
+    FIFO=""
 
     echo
-    awk -v mb="$MB" -v s="$elapsed" 'BEGIN {
+    awk -v mb="$MB" -v ms="$elapsed_ms" 'BEGIN {
+        s = ms / 1000
         rate = mb / s
-        printf "  %d MB in %ds = %.1f MB/s\n\n", mb, s, rate
-        if (rate > 5)      print "  Joining a world will feel instant. Ship it."
+        printf "  %d MB in %.2fs = %.1f MB/s\n\n", mb, s, rate
+        if (rate > 5)       print "  Joining a world will feel instant. Ship it."
         else if (rate >= 1) print "  Workable. Initial chunk sync will be noticeable but fine."
         else                print "  Too slow. Likely stuck below realtime-mode elevation."
     }'
