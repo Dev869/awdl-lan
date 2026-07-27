@@ -13,6 +13,20 @@ repositories {
     mavenCentral()
 }
 
+loom {
+    runs {
+        // Opens the screens this mod mixes into, so their injections actually apply.
+        // Booting to the title screen does not load them.
+        clientGametest {
+            client()
+            name = 'Client Game Test'
+            vmArg '-Dfabric.client.gametest.modid=lan-over-direct'
+            runDir = 'build/run/gametest'
+            ideConfigGenerated = false
+        }
+    }
+}
+
 dependencies {
     // No `mappings` line: Minecraft 26.x ships unobfuscated, so Loom needs none.
     minecraft "com.mojang:minecraft:${project.minecraft_version}"

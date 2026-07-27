@@ -4,12 +4,19 @@
   "version": "${version}",
   "name": "LAN over Direct",
   "description": "Play together over Apple peer-to-peer Wi-Fi (AWDL). No router, no network, no setup. macOS only, client-side only.",
-  "authors": ["Devin Wilson"],
+  "authors": [
+    "Devin Wilson"
+  ],
   "license": "MIT",
   "icon": "assets/lan-over-direct/icon.png",
   "environment": "client",
   "entrypoints": {
-    "client": ["dev.lanoverdirect.LanOverDirectClient"]
+    "client": [
+      "dev.lanoverdirect.LanOverDirectClient"
+    ],
+    "fabric-client-gametest": [
+      "dev.lanoverdirect.gametest.ScreenSmokeTest"
+    ]
   },
   "mixins": [
     {
