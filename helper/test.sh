@@ -12,6 +12,10 @@ cd "$(dirname "$0")"
 
 HELPER=.build/release/mcdirect-helper
 MC_PORT=19999
+# Unique per run. A fixed name collides with a leftover advertisement (Bonjour
+# renames the newcomer to "TestWorld (2)") and with any real world being shared
+# nearby, and the test then dials the wrong host and receives nothing.
+WORLD="LODTest-$$"
 WORK=$(mktemp -d)
 trap 'kill $(jobs -p) 2>/dev/null; rm -rf "$WORK"' EXIT
 
@@ -32,10 +36,10 @@ nc -l $MC_PORT > "$WORK/received.bin" &
 sleep 1
 
 # 3. Host helper fronts it. `sleep` holds stdin open — closing stdin is our kill switch.
-sleep 60 | $HELPER host --port $MC_PORT --name "TestWorld" --code 1234 > "$WORK/host.log" 2>&1 &
+sleep 60 | $HELPER host --port $MC_PORT --name "$WORLD" --code 1234 > "$WORK/host.log" 2>&1 &
 
-# 4. Browse helper finds it and dials automatically.
-sleep 60 | $HELPER browse --auto > "$WORK/browse.log" 2>&1 &
+# 4. Browse helper finds this run's world specifically and dials it.
+sleep 60 | $HELPER browse --auto --match "$WORLD" > "$WORK/browse.log" 2>&1 &
 
 # 5. Wait for the tunnel mouth to open.
 LOCAL_PORT=""

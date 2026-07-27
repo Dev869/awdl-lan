@@ -153,7 +153,7 @@ func bonjourSafe(_ name: String) -> String {
 var peers: [String: NWEndpoint] = [:]
 var pendingListeners: [String: NWListener] = [:]
 
-func runBrowse(autoConnect: Bool) {
+func runBrowse(autoConnect: Bool, match: String?) {
     let browser = NWBrowser(for: .bonjourWithTXTRecord(type: serviceType, domain: nil), using: p2pParameters())
 
     browser.browseResultsChangedHandler = { _, changes in
@@ -168,7 +168,11 @@ func runBrowse(autoConnect: Bool) {
                     if let world = txt["world"] { found["name"] = world }
                 }
                 emit(found)
-                if autoConnect { connect(id: name) }
+                // --match keeps a test run from dialling a real world that happens
+                // to be advertising nearby.
+                if autoConnect, match == nil || name == match {
+                    connect(id: name)
+                }
             case .removed(let result):
                 guard case .service(let name, _, _, _) = result.endpoint else { continue }
                 peers[name] = nil
@@ -269,9 +273,9 @@ case "host":
     }
     runHost(port: port, name: flag("--name") ?? "Minecraft", code: flag("--code") ?? "0000")
 case "browse":
-    runBrowse(autoConnect: args.contains("--auto"))
+    runBrowse(autoConnect: args.contains("--auto"), match: flag("--match"))
 default:
-    FileHandle.standardError.write("usage: mcdirect-helper host --port N [--name X] [--code NNNN] | browse [--auto]\n".data(using: .utf8)!)
+    FileHandle.standardError.write("usage: mcdirect-helper host --port N [--name X] [--code NNNN] | browse [--auto] [--match NAME]\n".data(using: .utf8)!)
     exit(2)
 }
 

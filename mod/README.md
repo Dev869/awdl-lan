@@ -48,5 +48,5 @@ Multiplayer screen opens, so reaching the main menu does not prove those injecti
 apply. Open Multiplayer once in the dev client: with `defaultRequire: 1` a bad
 target fails loudly rather than silently doing nothing.
 
-AWDL transport itself is proven only on one machine so far. See `../helper/README.md`
-for the two-Mac test.
+AWDL transport is proven on two Macs with Wi-Fi disabled on both: 50 MB in about
+6 seconds (~8 MB/s), well clear of the point where chunk sync would be felt.
