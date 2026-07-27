@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "dev.lanoverdirect.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "JoinMultiplayerScreenMixin",
+    "ServerSelectionListMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
