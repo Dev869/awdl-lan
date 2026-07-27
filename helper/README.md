@@ -21,17 +21,26 @@ Bluetooth on, since macOS uses it to bootstrap AWDL.
 Mac A, standing in for a Minecraft server, timing a 50 MB transfer:
 
 ```sh
-time nc -l 19999 > /dev/null &
+pkill -f 'nc -l 19999'   # a leftover listener keeps the port and eats the transfer
+nc -l 19999 > /tmp/got.bin &
 sleep 60 | ./mcdirect-helper host --port 19999 --name "TestWorld" --code 1234
 ```
 
 Mac B:
 
 ```sh
-sleep 60 | ./mcdirect-helper browse --auto
-# note the "localPort" in the connected event, then in another shell:
-head -c 50000000 /dev/urandom | nc 127.0.0.1 <localPort>
+sleep 60 | ./mcdirect-helper browse --auto | tee /tmp/browse.log
 ```
+
+Then, once `connected` appears, in another shell on Mac B:
+
+```sh
+PORT=$(grep -o '"localPort":[0-9]*' /tmp/browse.log | head -1 | cut -d: -f2)
+time head -c 50000000 /dev/urandom | nc 127.0.0.1 "$PORT"
+```
+
+An empty `$PORT` gives `nc: port range not valid`, which means no tunnel is open
+yet — read `/tmp/browse.log` rather than the nc error.
 
 Success is bytes arriving on Mac A with Wi-Fi off on both machines. The elapsed
 time is the throughput number that decides whether initial chunk sync is

@@ -92,14 +92,16 @@
   <div class="card">
     <h3>Mac A</h3>
     <p class="role">Stands in for the Minecraft server. Start this first.</p>
-<pre id="a1">nc -l 19999 | pv -b &gt; /dev/null &amp;
+<pre id="a1">pkill -f 'nc -l 19999'
+nc -l 19999 &gt; /tmp/got.bin &amp;
 sleep 300 | ./mcdirect-helper \
   host --port 19999 \
   --name "TestWorld" --code 1234</pre>
     <button class="copy" data-for="a1">Copy</button>
     <p class="role">
-      No <code>pv</code>? Use <code>nc -l 19999 &gt; /tmp/got.bin &amp;</code> and check the size afterwards
-      with <code>ls -l /tmp/got.bin</code>.
+      The <code>pkill</code> matters: a leftover listener from an earlier attempt keeps port
+      19999 and swallows the transfer, so you get a passing tunnel and an empty file.
+      Check the result afterwards with <code>ls -l /tmp/got.bin</code>.
     </p>
     <p class="role">Wait for <code>{"event":"ready"...}</code> before moving to Mac B.</p>
   </div>
@@ -114,9 +116,13 @@ sleep 300 | ./mcdirect-helper \
       Then in a <strong>second terminal</strong>. This picks the
       <code>localPort</code> out of the log for you, nothing to substitute:
     </p>
-<pre id="b2">PORT=$(grep -o '"localPort":[0-9]*' /tmp/browse.log | head -1 | cut -d: -f2)
-time head -c 50000000 /dev/urandom \
-  | nc 127.0.0.1 "$PORT"</pre>
+<pre id="b2">PORT=$(grep -o '"localPort":[0-9]*' /tmp/browse.log 2&gt;/dev/null | head -1 | cut -d: -f2)
+if [ -z "$PORT" ]; then
+  echo "no tunnel yet: /tmp/browse.log has no localPort."
+  echo "Run this on Mac B, in a second terminal, after 'connected' appears."
+else
+  time head -c 50000000 /dev/urandom | nc 127.0.0.1 "$PORT"
+fi</pre>
     <button class="copy" data-for="b2">Copy</button>
   </div>
 
