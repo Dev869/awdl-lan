@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "lan-over-direct",
+  "version": "${version}",
+  "name": "LAN over Direct",
+  "description": "Play together over Apple peer-to-peer Wi-Fi. No router, no network, no setup.",
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["dev.lanoverdirect.LanOverDirectClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.0",
+    "minecraft": "~26.2",
+    "java": ">=25"
+  }
+}

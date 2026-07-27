@@ -1,0 +1,56 @@
+plugins {
+    id 'fabric-loom' version '1.17.17'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    // Yarn has no 26.2 build, so use Mojang's own mappings.
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') {
+        expand version: project.version
+    }
+    // Ship the Swift helper inside the jar; HelperBinary unpacks it at runtime.
+    from('../helper/.build/release') {
+        include 'mcdirect-helper'
+        into 'native'
+    }
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 25
+}
+
+// The self-check is a plain main() with asserts, not JUnit. Run it via `gradle selfCheck`
+// or directly through mod/test.sh, which needs no Gradle at all.
+tasks.register('selfCheck', JavaExec) {
+    group = 'verification'
+    description = 'Runs the HelperProcess self-check against a fake and the real helper.'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.lanoverdirect.HelperProcessSelfCheck'
+    jvmArgs = ['-ea']
+}
