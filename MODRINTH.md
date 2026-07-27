@@ -67,8 +67,3 @@ when this is the problem, rather than showing an empty list.
 No internet play and no relay servers. Everything stays between the two machines.
 Traffic is unencrypted, exactly like vanilla Open to LAN. The room code labels
 worlds so you can tell them apart; it does not gate who joins.
-
-## Not filled in yet
-
-`fabric.mod.json` has no `contact` block. Add `sources` and `issues` once the repo
-is public, then rebuild so the jar carries the links.
