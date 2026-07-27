@@ -16,6 +16,35 @@ no Bluetooth stack.
 
 Minecraft 26.1–26.2, Fabric, client-side, macOS only.
 
+## Why not just use a hotspot
+
+A hotspot does work, so this is a question of what it costs rather than whether
+it is possible.
+
+A hotspot makes someone leave their network. AWDL runs alongside an existing
+Wi-Fi connection on the same radio, so both machines keep the network they were
+already on — no dropped internet, no voice chat cutting out mid-game. Making that
+true while joined to a network is most of what 1.0.2 was about.
+
+Two laptops with only Wi-Fi also cannot do this natively. macOS Internet Sharing
+cannot share a Wi-Fi connection *over* Wi-Fi; the uplink and the shared interface
+have to be different, so you need Ethernet or a second adapter. The old ad-hoc
+"Create Network" item is gone from the Wi-Fi menu on recent macOS. What is left in
+practice is someone's iPhone hotspot, which means cellular data, a charged phone
+in the room, and both Macs joining it.
+
+And there is nothing to set up here. No SSID, no password read out loud, no one
+changing network settings. AWDL is already running for AirDrop.
+
+Use a hotspot instead when your friend is not on a Mac — AWDL is Apple-only and
+no amount of work on this mod changes that. Or for more than about four players,
+where Apple's peer-to-peer link degrades and a hotspot scales better. Or when you
+would rather not have both people install a mod, since vanilla LAN over a hotspot
+just works.
+
+This is for two to four Macs somewhere with no usable network, who would rather
+not burn cellular or give up the connections they already have.
+
 ## Build and package
 
 ```sh
