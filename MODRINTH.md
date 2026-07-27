@@ -7,6 +7,7 @@ Everything below is paste-ready. Run `./package.sh` first; upload only
 
 | Field | Value |
 |---|---|
+| Icon | `icon-512.png` in the repo root |
 | Name | AWDL LAN |
 | Slug | `awdl-lan` |
 | Summary | Play together over Apple peer-to-peer Wi-Fi. No router, no network, no setup. macOS only. |
