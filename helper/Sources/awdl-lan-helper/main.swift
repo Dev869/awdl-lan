@@ -166,11 +166,20 @@ func bonjourSafe(_ name: String) -> String {
 // MARK: - Browse
 
 /// A world can be advertised on more than one interface at once — joined to a Wi-Fi
-/// network, the same host shows up over both en0 and awdl0 as two browse results that
-/// differ only in the interface they were seen on. Track them as a set per world so a
-/// second sighting is not a second world, and one sighting going away is not a loss.
+/// network, the same host is reachable over both en0 and awdl0. Track sightings as a
+/// set per world so a second sighting is not a second world, and one sighting going
+/// away is not a loss.
 var peers: [String: Set<NWEndpoint>] = [:]
 var tunnels: [String: NWListener] = [:]
+
+/// The radios each world has been seen on.
+///
+/// This exists because a browse result's endpoint is *not* interface-scoped: every
+/// sighting of a world carries the same unscoped Bonjour name, and dialling it leaves
+/// the choice of interface entirely to the stack. The result's interface list is the
+/// only handle on the individual radios, and pinning a dial to one of them is the only
+/// way to insist on a path the stack did not pick.
+var peerPaths: [String: [NWInterface]] = [:]
 
 /// Local clients currently attached per tunnel. Drives the `inuse`/`idle` events the
 /// mod uses to know a session is running through a tunnel.
@@ -186,6 +195,7 @@ func runBrowse(autoConnect: Bool, match: String?) {
                 guard case .service(let name, _, _, _) = result.endpoint else { continue }
                 let firstSighting = peers[name, default: []].isEmpty
                 peers[name, default: []].insert(result.endpoint)
+                peerPaths[name] = result.interfaces
                 guard firstSighting else { continue }
                 var found: [String: Any] = ["event": "found", "id": name, "name": name]
                 if case .bonjour(let txt) = result.metadata {
@@ -198,12 +208,21 @@ func runBrowse(autoConnect: Bool, match: String?) {
                 if autoConnect, match == nil || name == match {
                     connect(id: name)
                 }
+            // A radio coming or going under a world that never left arrives here, not
+            // as an add or a remove. Without this the pinned dials below aim at
+            // whichever radios happened to be up when the world was first seen.
+            case .changed(_, let result, _):
+                guard case .service(let name, _, _, _) = result.endpoint,
+                      peers[name] != nil else { continue }
+                peerPaths[name] = result.interfaces
+
             case .removed(let result):
                 guard case .service(let name, _, _, _) = result.endpoint else { continue }
                 peers[name]?.remove(result.endpoint)
                 // Still reachable on another interface: not a loss.
                 guard peers[name]?.isEmpty ?? true else { continue }
                 peers[name] = nil
+                peerPaths[name] = nil
                 tunnels.removeValue(forKey: name)?.cancel()
                 emit(["event": "lost", "id": name])
             default:
@@ -226,40 +245,50 @@ func runBrowse(autoConnect: Bool, match: String?) {
 
 /// Open one connection to a discovered world on behalf of one attached local client.
 ///
-/// By name first. A browse result carries the interface it arrived over, and dialling
-/// that endpoint pins the attempt to that one interface — so a world sighted over
-/// Wi-Fi gets dialled over Wi-Fi even when only the peer-to-peer path can reach it.
-/// Resolving the name lets the stack try every path and keep whichever answers.
-///
-/// If the name does not come up we work through the sightings, each of which is a
-/// path that existed a moment ago. Bonjour renaming a collision out from under us
-/// should cost a retry, not the join.
-///
-/// On a deadline rather than on failure, because a name with nothing behind it does
+/// On a deadline rather than on failure, because a path with nothing behind it does
 /// not fail — it sits in `preparing` indefinitely, and Minecraft sits with it.
 let dialTimeout: TimeInterval = 8
 
-/// Every path worth trying for a world, best first.
+/// Every path worth trying for a world, best first. `nil` means "any": let the stack
+/// choose the interface.
 ///
-/// Sightings are a set, so picking one of them arbitrarily can land on exactly the
-/// unreachable interface the by-name dial exists to avoid. Try them all instead —
-/// capped, because a chain of dead paths must still finish inside vanilla's own 30s
+/// Unpinned first, because when the shared network works that is both the fastest
+/// answer and the right one. It is not a fallback, though. The choice the stack makes
+/// is made once: if the path it picks cannot carry the connection, the attempt sits in
+/// `preparing` until the deadline and no other radio is ever tried, and an unpinned
+/// retry only repeats the same choice. Two Macs joined to one Wi-Fi network that will
+/// not pass traffic between them is exactly that case, and exactly the case AWDL is
+/// here to rescue — so the retries name a radio instead of asking for one.
+///
+/// Peer-to-peer before the rest, because it is the path that does not depend on
+/// anything but the two machines. Matched by name: AWDL reports itself as `.wifi`, the
+/// same type as the Wi-Fi interface it needs to be distinguished from.
+///
+/// Capped, because a chain of dead paths must still finish inside vanilla's own 30s
 /// connect timeout.
-func dialCandidates(_ id: String) -> [NWEndpoint] {
-    let byName = NWEndpoint.service(name: id, type: serviceType, domain: "local", interface: nil)
-    let sightings = (peers[id] ?? []).filter { $0 != byName }
-    return Array(([byName] + sightings).prefix(3))
+func dialCandidates(_ id: String) -> [NWInterface?] {
+    let seen = peerPaths[id] ?? []
+    let radio = seen.filter { $0.name.hasPrefix("awdl") }
+    let rest = seen.filter { !$0.name.hasPrefix("awdl") }
+    let ordered: [NWInterface?] = [nil] + (radio + rest).map { Optional($0) }
+    return Array(ordered.prefix(3))
 }
 
-func dial(id: String, for client: NWConnection, candidates: [NWEndpoint]) {
-    guard let endpoint = candidates.first else {
+func dial(id: String, for client: NWConnection, candidates: [NWInterface?]) {
+    guard let pinned = candidates.first else {
         trace("dial \(id): nothing left to try")
         client.cancel()
         return
     }
     let remaining = Array(candidates.dropFirst())
+    let via = pinned?.name ?? "any interface"
 
-    let peer = NWConnection(to: endpoint, using: p2pParameters())
+    // Always the unscoped name: the interface is carried by the parameters, since a
+    // browse result's endpoint has no interface to inherit.
+    let params = p2pParameters()
+    params.requiredInterface = pinned
+    let peer = NWConnection(
+        to: .service(name: id, type: serviceType, domain: "local", interface: nil), using: params)
     liveConnections.append(peer)
     var settled = false   // relaying or given up; all mutations land on `q`
 
@@ -268,13 +297,13 @@ func dial(id: String, for client: NWConnection, candidates: [NWEndpoint]) {
     func giveUp(_ why: String) {
         guard !settled else { return }
         settled = true
-        trace("dial \(id) via \(endpoint): \(why)")
+        trace("dial \(id) via \(via): \(why)")
         peer.cancel()
         dial(id: id, for: client, candidates: remaining)
     }
 
     peer.stateUpdateHandler = { state in
-        trace("tunnel.peer (\(remaining.count) paths left): \(state)")
+        trace("tunnel.peer via \(via) (\(remaining.count) paths left): \(state)")
         switch state {
         case .ready:
             // Pumping only once the peer is up keeps the client's bytes in its own
@@ -324,7 +353,9 @@ func connect(id: String) {
     // fails or a player who leaves and comes back gets a fresh dial on the same port
     // instead of a listener that was cancelled after the first attempt.
     listener.newConnectionHandler = { client in
-        trace("connect: local client attached, dialling peer")
+        let candidates = dialCandidates(id)
+        trace("connect: local client attached, paths ["
+              + candidates.map { $0?.name ?? "any" }.joined(separator: ", ") + "]")
 
         // Tell the mod this tunnel is carrying a session. It cannot work this out for
         // itself: joining is what closes the screen that keeps discovery alive, and
@@ -351,7 +382,7 @@ func connect(id: String) {
         }
 
         client.start(queue: q)
-        dial(id: id, for: client, candidates: dialCandidates(id))
+        dial(id: id, for: client, candidates: candidates)
     }
 
     listener.stateUpdateHandler = { state in

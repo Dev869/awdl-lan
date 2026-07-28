@@ -321,12 +321,16 @@ public final class AwdlLanClient implements ClientModInitializer {
             } else {
                 BUSY_TUNNELS.remove(id);
             }
-            LOG.debug("Tunnel to '{}' {}.", id, inUse ? "in use" : "idle");
+            LOG.info("Tunnel to '{}' {}.", id, inUse ? "in use" : "idle");
         }
 
         @Override
         public void onTrace(String line) {
-            LOG.debug("helper: {}", line);
+            // INFO, not DEBUG: these lines are the only account of what the radio did,
+            // and a launcher's default log drops DEBUG. A join that fails on someone
+            // else's machine leaves nothing behind otherwise. Volume is a handful of
+            // lines per connection.
+            LOG.info("helper: {}", line);
         }
 
         @Override

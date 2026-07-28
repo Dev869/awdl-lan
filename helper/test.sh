@@ -76,7 +76,16 @@ if ! cmp -s "$WORK/payload.bin" "$WORK/received.bin"; then
     exit 1
 fi
 
-# 8. Same tunnel, second connection. A player who disconnects and rejoins gets no
+# 8. The radio must be in the dial chain. A world seen over awdl0 that is only ever
+# dialled unpinned is the bug where two Macs joined to one Wi-Fi network discover each
+# other, fail to connect over it, and never try the one path that would have worked.
+if ! grep -q 'paths \[.*awdl0' "$WORK/browse.log"; then
+    echo "FAIL: awdl0 was seen but is not in the dial chain"
+    grep 'paths \[' "$WORK/browse.log" || echo "  (no dial chain logged at all)"
+    exit 1
+fi
+
+# 9. Same tunnel, second connection. A player who disconnects and rejoins gets no
 # new discovery event, so the mouth has to survive the first join or the entry in
 # the list points at a closed port for the rest of the session.
 # `nc -l` holds the port until its connection closes, and the relay only half-closes,

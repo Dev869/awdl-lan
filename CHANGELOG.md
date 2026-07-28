@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.0.3
+
+Fixes joining when both Macs are on the same Wi-Fi network but that network will
+not carry traffic between them. The join sat on "Connecting to the server…" for
+around twenty seconds and then failed with `Internal Exception:
+io.netty.channel.unix.Errors$NativeIoException ... -54`.
+
+**The peer-to-peer radio is now tried.** A world found on both Wi-Fi and the
+peer-to-peer radio was only ever dialled the one way, and macOS picks Wi-Fi when
+you are on a network. If that network blocks one Mac from reaching another —
+which plenty of home routers, guest networks and campus Wi-Fi do — every attempt
+went the same dead way. The radio is now dialled by name when the first attempt
+does not answer, which is the whole point of the mod and previously only happened
+with Wi-Fi switched off.
+
+**Failed joins say more.** The helper's account of what it tried now reaches the
+log, so a join that fails on someone else's machine leaves something behind to
+read.
+
 ## 1.0.2
 
 Fixes joining. If 1.0.0 showed you a nearby world that would not let you in, this
