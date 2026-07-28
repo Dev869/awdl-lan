@@ -2,7 +2,7 @@ package dev.awdllan.mixin;
 
 import dev.awdllan.AwdlLanClient;
 import dev.awdllan.NearbyWorldsScreen;
-import net.minecraft.client.Minecraft;
+import dev.awdllan.compat.Compat;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
@@ -47,7 +47,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
         Screen self = (Screen) (Object) this;
         addRenderableWidget(Button.builder(
                         Component.translatable("awdl-lan.button.nearby"),
-                        b -> Minecraft.getInstance().setScreenAndShow(new NearbyWorldsScreen(self)))
+                        b -> Compat.show(new NearbyWorldsScreen(self)))
                 .bounds(this.width - 84, 6, 78, 20)
                 .build());
     }

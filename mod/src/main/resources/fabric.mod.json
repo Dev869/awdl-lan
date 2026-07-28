@@ -22,9 +22,9 @@
     }
   ],
   "depends": {
-    "fabricloader": ">=0.19.3",
-    "minecraft": ">=26.1 <26.3",
-    "java": ">=25",
+    "fabricloader": ">=${loader_floor}",
+    "minecraft": "${mc_range}",
+    "java": ">=${java_level}",
     "fabric-api": "*"
   },
   "contact": {

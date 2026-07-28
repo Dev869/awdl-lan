@@ -1,12 +1,9 @@
 package dev.awdllan;
 
-import net.minecraft.client.Minecraft;
+import dev.awdllan.compat.Compat;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.StringWidget;
-import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.multiplayer.ServerData;
-import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.network.chat.Component;
 
 import java.util.List;
@@ -110,11 +107,7 @@ public class NearbyWorldsScreen extends Screen {
     }
 
     private void join(AwdlLanClient.NearbyWorld world) {
-        String address = "127.0.0.1:" + world.port();
-        ConnectScreen.startConnecting(this, Minecraft.getInstance(),
-                ServerAddress.parseString(address),
-                new ServerData(world.name(), address, ServerData.Type.LAN),
-                false, null);
+        Compat.connect(this, "127.0.0.1:" + world.port(), world.name());
     }
 
     @Override
@@ -135,6 +128,6 @@ public class NearbyWorldsScreen extends Screen {
 
     @Override
     public void onClose() {
-        Minecraft.getInstance().setScreenAndShow(parent);
+        Compat.show(parent);
     }
 }

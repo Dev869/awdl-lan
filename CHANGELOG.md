@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.1.0
+
+Adds Minecraft 1.19.4 through 1.21, and Intel Macs.
+
+**Five downloads, one mod.** Pick the jar for the version you play — 1.19.4, 1.20
+to 1.20.1, 1.20.2 to 1.20.4, 1.20.5 to 1.21.11, or 26.1 to 26.2. The download page
+lists the versions each one covers. Everything works the same on all of them: the
+same nearby worlds in the same multiplayer list, over the same radio. Both players
+still need the mod and the same Minecraft version, as they always did — the game
+itself will not join a 1.20 client to a 26.2 world.
+
+**Intel Macs work now.** The helper the mod runs was built for Apple Silicon only,
+so on an Intel Mac nothing ever appeared. It now ships for both, back to macOS
+10.15. Only current macOS has been tested, so if you are on something older and it
+does not work, please report it.
+
+Nothing changed in how any of it works.
+
 ## 1.0.3
 
 Fixes joining while both Macs are on the same Wi-Fi network. If a nearby world

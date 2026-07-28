@@ -18,7 +18,7 @@ import java.util.HexFormat;
  */
 public final class HelperBinary {
 
-    /** Path inside the jar. Populated by the build from helper/.build/release/. */
+    /** Path inside the jar. Populated by the build from helper/.build/apple/Products/Release/. */
     private static final String RESOURCE = "/native/awdl-lan-helper";
 
     private HelperBinary() {}

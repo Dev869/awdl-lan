@@ -47,7 +47,7 @@ existing mod uses AWDL.
 
 ## Components
 
-### `awdl-lan-helper` (Swift, macOS 13+)
+### `awdl-lan-helper` (Swift, macOS 10.15+, universal)
 
 A command-line binary, roughly 300 lines, shipped inside the mod jar. It speaks
 newline-delimited JSON on stdin/stdout and does all networking.
@@ -168,9 +168,9 @@ roughly four players. Apple also notes that peer-to-peer transmission can be
 choppy until the OS elevates the link to realtime mode — whether Minecraft's
 traffic pattern triggers that elevation is unknown and is a Phase 0 measurement.
 
-Apple Silicon requires at least an ad-hoc code signature. **Resolved in Phase 0:**
-the Swift linker applies one automatically (`flags=0x20002(adhoc,linker-signed)`),
-so no signing step is needed.
+Apple Silicon requires at least an ad-hoc code signature. The Swift linker applies
+one per slice automatically, but merging the slices into a universal binary drops it,
+so `helper/build.sh` re-signs the merged file with `codesign -s -`.
 
 ## Phase 0 results (2026-07-27, macOS 26.5.1, Swift 6.3.3, arm64)
 

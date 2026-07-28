@@ -10,7 +10,7 @@
 set -u
 cd "$(dirname "$0")"
 
-HELPER=.build/release/awdl-lan-helper
+HELPER=.build/apple/Products/Release/awdl-lan-helper
 MC_PORT=19999
 # Unique per run. A fixed name collides with a leftover advertisement (Bonjour
 # renames the newcomer to "TestWorld (2)") and with any real world being shared
@@ -19,7 +19,7 @@ WORLD="LODTest-$$"
 WORK=$(mktemp -d)
 trap 'kill $(jobs -p) 2>/dev/null; rm -rf "$WORK"' EXIT
 
-[ -x "$HELPER" ] || { echo "FAIL: build first (swift build -c release)"; exit 1; }
+[ -x "$HELPER" ] || { echo "FAIL: build first (./build.sh)"; exit 1; }
 
 # 1. A payload big enough to cross several receive() chunks.
 head -c 300000 /dev/urandom > "$WORK/payload.bin"

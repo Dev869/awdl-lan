@@ -1,10 +1,13 @@
 # awdl-lan (Fabric mod)
 
-Minecraft 26.2, Fabric, macOS only. Surfaces nearby Macs' open worlds in the
-vanilla LAN list, tunnelled over Apple peer-to-peer Wi-Fi (AWDL).
+Minecraft 1.19.4 through 26.x, Fabric, macOS only. Surfaces nearby Macs' open worlds
+in the vanilla LAN list, tunnelled over Apple peer-to-peer Wi-Fi (AWDL).
+
+`gradle build` produces the 26.x jar. `gradle build -Pmc=<id>` produces any other
+line — `gradle targets` lists them. `../package.sh` builds and verifies all five.
 
 ```sh
-cd ../helper && swift build -c release   # the mod jar embeds this binary
+cd ../helper && ./build.sh   # the jar embeds this binary
 cd ../mod
 ./test.sh                                # transport self-check, no Gradle or Minecraft
 gradle build                             # jar in build/libs/

@@ -1,5 +1,6 @@
 package dev.awdllan;
 
+import dev.awdllan.compat.Compat;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
@@ -135,8 +136,7 @@ public final class AwdlLanClient implements ClientModInitializer {
             LOG.info("Sharing '{}' over peer-to-peer Wi-Fi. Room code: {}", worldName, code);
             var player = Minecraft.getInstance().player;
             if (player != null) {
-                player.sendSystemMessage(
-                        Component.translatable("awdl-lan.chat.hosting", code));
+                Compat.tell(player, Component.translatable("awdl-lan.chat.hosting", code));
             }
         } catch (Exception e) {
             LOG.warn("Could not start hosting: {}", e.toString());

@@ -1,9 +1,10 @@
 #!/bin/bash
-# Builds a release-ready mod jar and drops it in dist/.
+# Builds the release-ready mod jars and drops them in dist/.
 #
-# Runs both test suites first, then verifies the packaged jar rather than trusting
-# that Gradle copied the right things. The Swift binary is the part most likely to
-# go stale or missing, so it is checked byte-for-byte against the one just built.
+# One jar per Minecraft line, from the TARGETS map in mod/build.gradle. Runs both test
+# suites first, then verifies each packaged jar rather than trusting that Gradle copied
+# the right things. The Swift binary is the part most likely to go stale or missing, so
+# it is checked byte-for-byte against the one just built, and for both architectures.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -11,14 +12,20 @@ export JAVA_HOME=${JAVA_HOME:-/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/C
 export PATH="$JAVA_HOME/bin:$PATH"
 
 VERSION=$(grep '^mod_version=' mod/gradle.properties | cut -d= -f2)
-MC_RANGE=$(python3 -c "import json;print(json.load(open('mod/src/main/resources/fabric.mod.json'))['depends']['minecraft'])")
-HELPER=helper/.build/release/awdl-lan-helper
-JAR=mod/build/libs/awdl-lan-$VERSION.jar
+HELPER=helper/.build/apple/Products/Release/awdl-lan-helper
 
 step() { printf '\n\033[1m▸ %s\033[0m\n' "$1"; }
+STARTED=$(date +%s)
 
-step "Building the helper (Swift)"
-( cd helper && swift build -c release )
+# "<id>|<version-suffix>|<minecraft range>" per line, straight from build.gradle so
+# this script never carries a second, drifting copy of the target list.
+TARGETS=$( cd mod && gradle -q targets )
+
+step "Building the helper (Swift, arm64 + x86_64)"
+helper/build.sh
+lipo -archs "$HELPER" | grep -q x86_64 && lipo -archs "$HELPER" | grep -q arm64 \
+    || { echo "FAIL: helper is not universal: $(lipo -archs "$HELPER")"; exit 1; }
+
 
 step "Helper relay test"
 helper/test.sh
@@ -26,35 +33,64 @@ helper/test.sh
 step "Transport self-check (no Minecraft classpath)"
 mod/test.sh
 
-step "Building the mod"
-( cd mod && gradle build -q )
-
-step "Verifying the packaged jar"
-[ -f "$JAR" ] || { echo "FAIL: $JAR not produced"; exit 1; }
+while IFS="|" read -r id _ range; do
+    step "Building the mod (Minecraft $range)"
+    ( cd mod && gradle build -q -Pmc="$id" )
+done <<< "$TARGETS"
 
 work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
-unzip -qo "$JAR" -d "$work"
 
-for required in native/awdl-lan-helper fabric.mod.json awdl-lan.mixins.json \
-                assets/awdl-lan/icon.png assets/awdl-lan/lang/en_us.json; do
-    [ -e "$work/$required" ] || { echo "FAIL: jar is missing $required"; exit 1; }
-done
+# Each jar gets the same treatment; nothing here is specific to a Minecraft line.
+verify_jar() {
+    local jar=$1 range=$2
+    step "Verifying $(basename "$jar")"
+    [ -f "$jar" ] || { echo "FAIL: $jar not produced"; exit 1; }
+    rm -rf "$work"/*
+    unzip -qo "$jar" -d "$work"
 
-# A stale embedded binary would ship silently and fail only on a user's machine.
-if ! cmp -s "$HELPER" "$work/native/awdl-lan-helper"; then
-    echo "FAIL: embedded helper differs from helper/.build/release"; exit 1
-fi
+    for required in native/awdl-lan-helper fabric.mod.json awdl-lan.mixins.json \
+                    assets/awdl-lan/icon.png assets/awdl-lan/lang/en_us.json; do
+        [ -e "$work/$required" ] || { echo "FAIL: jar is missing $required"; exit 1; }
+    done
 
-# It must still be a valid signed arm64 Mach-O after the round trip.
-chmod +x "$work/native/awdl-lan-helper"
-codesign -v "$work/native/awdl-lan-helper" 2>/dev/null || { echo "FAIL: embedded helper signature invalid"; exit 1; }
-"$work/native/awdl-lan-helper" >/dev/null 2>&1 && { echo "FAIL: helper should exit 2 with no args"; exit 1; }
+    # A stale embedded binary would ship silently and fail only on a user's machine.
+    if ! cmp -s "$HELPER" "$work/native/awdl-lan-helper"; then
+        echo "FAIL: embedded helper differs from $HELPER"; exit 1
+    fi
 
-step "Checking jar references resolve"
-# Mixin targets, entrypoints, and lang keys are resolved by name at load time, so a
-# typo or a moved class survives compilation and fails only when a player opens the
-# screen. Check them against the packaged jar.
-JARDIR="$work" python3 - <<'PY'
+    # It must still be a valid signed universal Mach-O after the round trip. Shipping
+    # an arm64-only slice is how Intel Macs get silently locked out.
+    chmod +x "$work/native/awdl-lan-helper"
+    archs=$(lipo -archs "$work/native/awdl-lan-helper")
+    [[ "$archs" == *arm64* && "$archs" == *x86_64* ]] || { echo "FAIL: embedded helper is $archs, not universal"; exit 1; }
+    codesign -v "$work/native/awdl-lan-helper" 2>/dev/null || { echo "FAIL: embedded helper signature invalid"; exit 1; }
+    "$work/native/awdl-lan-helper" >/dev/null 2>&1 && { echo "FAIL: helper should exit 2 with no args"; exit 1; }
+
+    # The native slice is the one that gets run here; the other one is the whole point
+    # of shipping universal, so run it too rather than trusting that lipo put it there.
+    if arch -x86_64 /usr/bin/true 2>/dev/null; then
+        # Exit 2 is success here, so capture the status rather than letting `set -e`
+        # treat the usage exit as a failure and kill the script.
+        rc=0; arch -x86_64 "$work/native/awdl-lan-helper" >/dev/null 2>&1 || rc=$?
+        [ "$rc" -eq 2 ] || { echo "FAIL: embedded helper does not run under x86_64 (exit $rc)"; exit 1; }
+    else
+        echo "  note: Rosetta absent, x86_64 slice not executed"
+    fi
+
+    # The three per-target fields are template-expanded, and a jar that claims the
+    # wrong Minecraft range or Java level fails at load on a player's machine, not here.
+    grep -q "\"minecraft\": \"$range\"" "$work/fabric.mod.json" \
+        || { echo "FAIL: jar claims $(grep -o '"minecraft": "[^"]*"' "$work/fabric.mod.json"), expected $range"; exit 1; }
+    for f in "$work/fabric.mod.json" "$work/awdl-lan.mixins.json"; do
+        grep -q '\${' "$f" || continue
+        echo "FAIL: unexpanded template in $(basename "$f")"; exit 1
+    done
+
+    step "Checking jar references resolve"
+    # Mixin targets, entrypoints, and lang keys are resolved by name at load time, so a
+    # typo or a moved class survives compilation and fails only when a player opens the
+    # screen. Check them against the packaged jar.
+    JARDIR="$work" python3 - <<'PY'
 import json, os, pathlib, re, sys
 
 root = pathlib.Path(os.environ["JARDIR"])
@@ -88,7 +124,7 @@ if not lang_path.exists():
 else:
     lang = json.loads(lang_path.read_text())
     used = set()
-    for java in pathlib.Path("mod/src/main/java").rglob("*.java"):
+    for java in pathlib.Path("mod/src").rglob("*.java"):
         used |= set(re.findall(r'translatable\(\s*"([^"]+)"', java.read_text()))
     for key in sorted(k for k in used if k.startswith("awdl-lan")):
         if key not in lang:
@@ -99,23 +135,39 @@ if problems:
     sys.exit(1)
 print("mixin targets, entrypoints, icon and translation keys all resolve")
 PY
+}
 
+while IFS="|" read -r id suffix range; do
+    jar="mod/build/libs/awdl-lan-$VERSION$suffix.jar"
+    # build/libs is never cleaned, so a jar older than this run is one Gradle did not
+    # just produce — a rename or a failed target would otherwise ship the last release.
+    [ -f "$jar" ] && [ "$(stat -f %m "$jar")" -ge "$STARTED" ] \
+        || { echo "FAIL: $jar was not produced by this run"; exit 1; }
+    verify_jar "$jar" "$range"
+done <<< "$TARGETS"
+
+# Only now is it safe to replace the last release's jars.
 mkdir -p dist
-cp "$JAR" dist/
-SIZE=$(du -h "dist/awdl-lan-$VERSION.jar" | cut -f1)
-SHA=$(shasum -a 512 "dist/awdl-lan-$VERSION.jar" | cut -c1-16)
+rm -f dist/*.jar
+while IFS="|" read -r id suffix range; do
+    cp "mod/build/libs/awdl-lan-$VERSION$suffix.jar" dist/
+done <<< "$TARGETS"
+
+step "Release summary"
+while IFS="|" read -r id suffix range; do
+    jar="dist/awdl-lan-$VERSION$suffix.jar"
+    printf '  %-32s %s  %s  (sha512 %s...)\n' "$(basename "$jar")" \
+        "$(du -h "$jar" | cut -f1)" "$range" "$(shasum -a 512 "$jar" | cut -c1-12)"
+done <<< "$TARGETS"
 
 cat <<EOF
 
-$(printf '\033[1;32m✓ dist/awdl-lan-%s.jar\033[0m' "$VERSION")  ($SIZE, sha512 ${SHA}...)
+Every jar above goes up to Modrinth as its own version of $VERSION, with the game
+versions its range covers ticked. Loaders: Fabric. Environment: client-side only
+(+ works in singleplayer). Dependencies: Fabric API — required.
 
-Upload that one file to Modrinth. Settings to select:
-
-  Version number     $VERSION
-  Loaders            Fabric
-  Game versions      $MC_RANGE  (tick 26.1, 26.1.2, 26.2)
-  Environment        Client-side only (+ works in singleplayer)
-  Dependencies       Fabric API — required
+Each jar is built against the newest Minecraft in its range and runs on the rest:
+the intermediary names it compiles against are identical across the range.
 
 Field-by-field text for the project page is in MODRINTH.md.
 EOF

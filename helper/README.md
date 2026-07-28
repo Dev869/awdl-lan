@@ -5,7 +5,7 @@ worlds over AWDL (Apple peer-to-peer Wi-Fi) and exposes each peer as a plain
 loopback TCP port. Speaks newline-delimited JSON on stdin/stdout.
 
 ```sh
-swift build -c release
+./build.sh
 ./test.sh                 # end-to-end relay test, single machine
 ```
 

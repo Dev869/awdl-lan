@@ -14,7 +14,8 @@ A small Swift binary owns the radio via Network.framework. The Java mod never se
 anything but a loopback port, which is why it needs no JNI, no native bindings, and
 no Bluetooth stack.
 
-Minecraft 26.1–26.2, Fabric, client-side, macOS only.
+Minecraft 1.19.4 through 26.2, Fabric, client-side. macOS 10.15+ on Intel,
+11+ on Apple Silicon.
 
 ## Why not just use a hotspot
 
@@ -51,13 +52,14 @@ not burn cellular or give up the connections they already have.
 ./package.sh          # tests both halves, builds, verifies, writes dist/
 ```
 
-That is the only command needed for a release. It runs both test suites, then
-checks the packaged jar rather than trusting the build: required resources present,
-embedded binary byte-identical to the one just compiled, signature still valid, and
-the binary still executable after the jar round trip.
+That is the only command needed for a release. It runs both test suites, then checks
+every packaged jar rather than trusting the build: required resources present, the
+declared Minecraft range and Java level matching the target it was built for, the
+embedded binary byte-identical to the one just compiled, universal and validly
+signed, and still executable on both architectures after the jar round trip.
 
-Upload `dist/awdl-lan-<version>.jar`. Project page copy is in
-[MODRINTH.md](MODRINTH.md).
+Upload each jar in `dist/` as its own version, with the game versions the script
+prints beside it. Project page copy is in [MODRINTH.md](MODRINTH.md).
 
 ## Layout
 
@@ -92,14 +94,36 @@ Discovery is hold-counted, not started and stopped. Screen handoff fires the old
 screen's `removed()` before the new screen's `init()`, so a plain stop/start blanks
 the list on every navigation.
 
-Minecraft went unobfuscated at 26.1, which is why there is no `mappings` line in
-`build.gradle` and why the mixins reference real names. It is also why 1.21.x is
-out of reach without a separate mappings build.
+Five jars come out of one source tree, one per Minecraft line, listed in the TARGETS
+map in `mod/build.gradle` and built with `gradle build -Pmc=<id>`. Minecraft went
+unobfuscated at 26.1, so that build needs no `mappings` line and its mixins reference
+real names; every older line goes through Loom's remapping plugin with Mojang
+mappings and a lower Java release.
+
+The only per-line source is `dev.awdllan.compat.Compat`, which holds the three calls
+that moved: `setScreen` became `setScreenAndShow` at 26.1, `displayClientMessage`
+became `sendSystemMessage` at 26.1, and joining changed twice on the way up —
+`ConnectScreen.startConnecting` gained an argument at 1.20 and another at 1.20.5,
+and `ServerData` swapped its `boolean` for a `Type` at 1.20.2. Everything else
+compiles unchanged across all five.
+
+Most jars claim a wider range than the single version they were built against, which
+is only honest because the intermediary names Loom compiles against are identical at
+both ends: built both, diffed every `class_`/`method_`/`field_` reference in the
+output, zero differences. Redo that before widening a range. The 1.19.4 jar covers
+exactly what it was built on, and the 26.x jar has no intermediary names to diff — it
+is unobfuscated, and its range is the three releases of that line.
+
+1.19.3 is where it stops. `StringWidget` does not exist there, `Button.builder` does
+not exist below 1.19.3, and `Component.translatable` is not a static method below
+1.19 — that is a second UI implementation, not a compat shim.
 
 ## Limits
 
-macOS only, by construction. Roughly 2–4 players before Apple's peer-to-peer
-protocol degrades. Traffic is unencrypted, matching vanilla Open to LAN.
+macOS only, by construction. The helper is a universal binary and nothing in it needs
+newer than 10.15, so Intel Macs are in, but only the current macOS has been tested.
+Roughly 2–4 players before Apple's peer-to-peer protocol degrades. Traffic is
+unencrypted, matching vanilla Open to LAN.
 
 A shared world is open to anyone in radio range. The room code is advertised in
 the clear and is shown to disambiguate two worlds with the same name, not checked

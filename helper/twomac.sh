@@ -27,12 +27,12 @@ DISCOVERY_TIMEOUT=60
 trap 'kill $(jobs -p) 2>/dev/null; rm -f "$LOG" ${FIFO:+"$FIFO"}' EXIT INT TERM
 
 HELPER=""
-for candidate in ./awdl-lan-helper .build/release/awdl-lan-helper; do
+for candidate in ./awdl-lan-helper .build/apple/Products/Release/awdl-lan-helper; do
     [ -x "$candidate" ] && HELPER=$candidate && break
 done
 if [ -z "$HELPER" ]; then
-    echo "No awdl-lan-helper found next to this script or in .build/release."
-    echo "On Mac A: swift build -c release"
+    echo "No awdl-lan-helper found next to this script or in .build/apple."
+    echo "On Mac A: ./build.sh"
     echo "On Mac B: AirDrop both awdl-lan-helper and twomac.sh into the same folder."
     exit 1
 fi

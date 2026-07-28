@@ -1,7 +1,8 @@
 # Modrinth submission
 
-Everything below is paste-ready. Run `./package.sh` first; upload only
-`dist/awdl-lan-<version>.jar`.
+Everything below is paste-ready. Run `./package.sh` first; it leaves five jars in
+`dist/`, one per Minecraft line, and each goes up as its own version. The script
+prints the game-version range to tick for each one.
 
 ## Project settings
 
@@ -18,10 +19,10 @@ Everything below is paste-ready. Run `./package.sh` first; upload only
 
 | Field | Value |
 |---|---|
-| Version number | matches `mod_version` in `mod/gradle.properties` |
+| Version number | the jar's filename after `awdl-lan-`, so `<mod_version>` or `<mod_version>+mc<version>` |
 | Channel | Release |
 | Loaders | Fabric |
-| Game versions | 26.1, 26.1.2, 26.2 |
+| Game versions | the range `./package.sh` prints beside that jar |
 | Dependencies | Fabric API — required |
 
 The version changelog field is in [CHANGELOG.md](CHANGELOG.md).
@@ -50,7 +51,7 @@ went wrong.
 
 ### Requirements
 
-- **macOS only.** AWDL is Apple technology, so a Mac cannot link to a Windows or
+- **macOS only**, Intel or Apple Silicon. AWDL is Apple technology, so a Mac cannot link to a Windows or
   Linux machine this way. The mod installs harmlessly on other platforms and simply
   does nothing.
 - Both players need the mod and Fabric API.

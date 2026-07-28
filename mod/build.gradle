@@ -1,8 +1,44 @@
 plugins {
-    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+    // Two flavours of the same Loom: `net.fabricmc.fabric-loom` targets unobfuscated
+    // Minecraft (26.1+), plain `fabric-loom` still runs the remapping pipeline every
+    // older line needs. Only one gets applied — see TARGETS below.
+    id 'net.fabricmc.fabric-loom' version "${loom_version}" apply false
+    id 'fabric-loom' version "${loom_version}" apply false
 }
 
-version = project.mod_version
+// One entry per Minecraft line we ship, selected with `-Pmc=<id>` (default 26).
+//
+// One source tree covers all of them. The only per-line code is the compat class in
+// `src`, holding the three vanilla calls that were renamed or resignatured underneath
+// us; everything else compiles unchanged from 1.19.4 to 26.2. `range` is what the jar
+// claims to support; where it spans more than one release, that is because the
+// intermediary names Loom compiles against are identical at both ends of the range —
+// built both and diffed the names, not assumed. Redo that before widening one.
+// `../package.sh` builds every target.
+// `loader` is the floor the jar *declares*, not what it is built against. Only 26.x
+// needs a recent loader; demanding 0.19.3 from a 1.19.4 player would lock them out of
+// a jar that uses nothing newer than getConfigDir().
+def TARGETS = [
+    '26'    : [mc: '26.2',    api: '0.155.2+26.2',    range: '>=26.1 <26.3',     java: 25, src: 'mc26',   loader: '0.19.3'],
+    '1.21'  : [mc: '1.21.11', api: '0.141.5+1.21.11', range: '>=1.20.5 <1.22',   java: 21, src: 'mc121',  loader: '0.14.19'],
+    '1.20.4': [mc: '1.20.4',  api: '0.97.3+1.20.4',   range: '>=1.20.2 <1.20.5', java: 17, src: 'mc1204', loader: '0.14.19'],
+    '1.20.1': [mc: '1.20.1',  api: '0.92.11+1.20.1',  range: '>=1.20 <1.20.2',   java: 17, src: 'mc1201', loader: '0.14.19'],
+    '1.19.4': [mc: '1.19.4',  api: '0.87.2+1.19.4',   range: '>=1.19.4 <1.20',   java: 17, src: 'mc1194', loader: '0.14.19'],
+]
+
+def targetId = project.hasProperty('mc') ? project.mc : '26'
+def target = TARGETS[targetId]
+if (target == null) {
+    throw new GradleException("Unknown -Pmc=${targetId}. Known targets: ${TARGETS.keySet().join(', ')}")
+}
+
+// Minecraft ships unobfuscated from 26.1 on; every older line needs the remapping
+// pipeline, which is a different Loom plugin, mappings, and `modImplementation`.
+def obfuscated = target.mc.startsWith('1.')
+apply plugin: obfuscated ? 'fabric-loom' : 'net.fabricmc.fabric-loom'
+
+// Every jar carries the same mod version, so the Minecraft line has to be in the name.
+version = obfuscated ? "${project.mod_version}+mc${target.mc}" : project.mod_version
 group = project.maven_group
 
 base {
@@ -14,19 +50,50 @@ repositories {
 }
 
 dependencies {
-    // No `mappings` line: Minecraft 26.x ships unobfuscated, so Loom needs none.
-    minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    minecraft "com.mojang:minecraft:${target.mc}"
+    if (obfuscated) {
+        mappings loom.officialMojangMappings()
+    }
+    def modDep = obfuscated ? 'modImplementation' : 'implementation'
+    add(modDep, "net.fabricmc:fabric-loader:${project.loader_version}")
+    add(modDep, "net.fabricmc.fabric-api:fabric-api:${target.api}")
+}
+
+sourceSets.main.java.srcDir "src/${target.src}/java"
+
+// `package.sh` reads this rather than keeping its own copy of the target list.
+tasks.register('targets') {
+    group = 'help'
+    description = 'Prints "<id>|<version-suffix>|<minecraft range>" for every target.'
+    doLast {
+        TARGETS.each { id, t ->
+            // Pipe-delimited because the suffix is empty for 26.x and the range has
+            // spaces in it; neither survives whitespace splitting.
+            println "${id}|${t.mc.startsWith('1.') ? "+mc${t.mc}" : ''}|${t.range}"
+        }
+    }
 }
 
 processResources {
     inputs.property 'version', project.version
-    filesMatching('fabric.mod.json') {
-        expand version: project.version
+    inputs.property 'mc_range', target.range
+    inputs.property 'java_level', target.java
+    inputs.property 'loader_floor', target.loader
+    filesMatching(['fabric.mod.json', 'awdl-lan.mixins.json']) {
+        expand version: project.version, mc_range: target.range, java_level: target.java,
+               loader_floor: target.loader
     }
     // Ship the Swift helper inside the jar; HelperBinary unpacks it at runtime.
-    from('../helper/.build/release') {
+    // Gradle treats a missing source directory as nothing to copy, so without this the
+    // jar builds happily with no helper in it and every player gets "helper binary
+    // missing from jar". Run helper/build.sh first.
+    def helper = file('../helper/.build/apple/Products/Release/awdl-lan-helper')
+    doFirst {
+        if (!helper.exists()) {
+            throw new GradleException("helper binary missing: ${helper}. Run helper/build.sh first.")
+        }
+    }
+    from('../helper/.build/apple/Products/Release') {
         include 'awdl-lan-helper'
         into 'native'
     }
@@ -40,13 +107,13 @@ jar {
 
 tasks.withType(JavaCompile).configureEach {
     it.options.encoding = 'UTF-8'
-    it.options.release = 25
+    it.options.release = target.java
 }
 
 java {
     withSourcesJar()
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
+    sourceCompatibility = JavaVersion.toVersion(target.java)
+    targetCompatibility = JavaVersion.toVersion(target.java)
 }
 
 // The self-check is a plain main() with asserts, not JUnit. `mod/test.sh` runs the

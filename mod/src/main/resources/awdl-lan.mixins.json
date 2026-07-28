@@ -1,7 +1,7 @@
 {
   "required": true,
   "package": "dev.awdllan.mixin",
-  "compatibilityLevel": "JAVA_25",
+  "compatibilityLevel": "JAVA_${java_level}",
   "client": [
     "JoinMultiplayerScreenMixin",
     "ServerSelectionListMixin"
